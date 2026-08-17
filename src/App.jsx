@@ -11,6 +11,7 @@ import ScanFoodLabel from './components/ScanFoodLabel.jsx'
 import QuickAddRecipe from './components/QuickAddRecipe.jsx'
 import SupplementChecklist from './components/SupplementChecklist.jsx'
 import HistoryCalendar from './components/HistoryCalendar.jsx'
+import Reveal from './components/Reveal.jsx'
 
 export default function App() {
   const [refreshKey, setRefreshKey] = useState(0)
@@ -45,16 +46,16 @@ export default function App() {
       {page === 'today' && (
         <>
           <AdaptiveGoalBanner onAdjusted={logged} />
-          <TodayTotals refreshKey={refreshKey} />
-          <LogWeight onLogged={logged} />
-          <QuickAddIngredient onLogged={logged} />
-          <ScanFoodLabel onLogged={logged} />
-          <QuickAddRecipe onLogged={logged} />
-          <SupplementChecklist />
+          <Reveal><TodayTotals refreshKey={refreshKey} /></Reveal>
+          <Reveal><LogWeight onLogged={logged} /></Reveal>
+          <Reveal><QuickAddIngredient onLogged={logged} /></Reveal>
+          <Reveal><ScanFoodLabel onLogged={logged} /></Reveal>
+          <Reveal><QuickAddRecipe onLogged={logged} /></Reveal>
+          <Reveal><SupplementChecklist /></Reveal>
         </>
       )}
 
-      {page === 'history' && <HistoryCalendar />}
+      {page === 'history' && <Reveal><HistoryCalendar /></Reveal>}
     </PageShell>
   )
 }
