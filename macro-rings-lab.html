@@ -46,6 +46,12 @@
     --accent-dim: color-mix(in srgb, var(--accent) 15%, transparent);
     --warn: #F59E0B;
     --danger: #EF4444;
+    --status-blue: #38BDF8;
+    --status-blue-glow: color-mix(in srgb, var(--status-blue) 55%, transparent);
+    --status-green: #22C55E;
+    --status-green-glow: color-mix(in srgb, var(--status-green) 55%, transparent);
+    --status-orange: #F97316;
+    --status-orange-glow: color-mix(in srgb, var(--status-orange) 55%, transparent);
     --muted: rgba(255,255,255,.5);
     --muted-strong: rgba(255,255,255,.72);
     --border: rgba(255,255,255,.1);
@@ -508,7 +514,12 @@
     color: var(--muted);
   }
 
-  /* ---------- card 8: capsule bars ---------- */
+  /* ---------- card 8: capsule bars ----------
+     Fixed 2000ms / 14px by design (not tied to the shared duration/
+     thickness sliders) — this card's animation and line weight are
+     locked in, and fill color is a 3-state status indicator rather
+     than the shared theme accent: blue while approaching target,
+     green on target, orange over target. */
   .capsule-list { width: 100%; display: flex; flex-direction: column; gap: 16px; }
   .capsule-row { display: flex; flex-direction: column; gap: 6px; }
   .capsule-row-head {
@@ -520,20 +531,24 @@
   }
   .capsule-track {
     width: 100%;
-    height: var(--thickness);
+    height: 14px;
     border-radius: 999px;
-    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    background: rgba(255,255,255,.06);
     overflow: hidden;
   }
   .capsule-fill {
     height: 100%;
     width: 0%;
     border-radius: 999px;
-    background: var(--accent);
-    transition: width var(--dur) var(--ease), background var(--dur) var(--ease);
+    background: var(--status-blue);
+    transition: width 2000ms var(--ease), background 2000ms var(--ease), box-shadow 2000ms var(--ease);
   }
-  .capsule-fill.glow { box-shadow: 0 0 10px var(--accent-glow); }
-  .capsule-fill.is-over { background: var(--warn); }
+  .capsule-fill.status-blue { background: var(--status-blue); }
+  .capsule-fill.status-blue.glow { box-shadow: 0 0 10px var(--status-blue-glow); }
+  .capsule-fill.status-green { background: var(--status-green); }
+  .capsule-fill.status-green.glow { box-shadow: 0 0 10px var(--status-green-glow); }
+  .capsule-fill.status-orange { background: var(--status-orange); }
+  .capsule-fill.status-orange.glow { box-shadow: 0 0 10px var(--status-orange-glow); }
 
   @media (max-width: 640px) {
     .grid { grid-template-columns: 1fr; padding: 24px 16px 60px; }
@@ -757,6 +772,14 @@
   function fmt(key, val) {
     var m = MACROS.filter(function (m) { return m.key === key; })[0];
     return Math.round(val) + m.unit;
+  }
+
+  // 3-state status for a percent-of-target value: still approaching
+  // the goal, comfortably on target, or gone past it.
+  function statusFor(pct) {
+    if (pct > 105) return 'orange';
+    if (pct >= 90) return 'green';
+    return 'blue';
   }
 
   function circumference(r) { return 2 * Math.PI * r; }
@@ -1213,11 +1236,12 @@
     function render(animateFromZero) {
       MACROS.forEach(function (m) {
         var pct = pctFor(m.key);
-        var over = pct > 100;
         var ringPct = Math.min(100, pct);
         var el = fillEls[m.key];
+        var status = statusFor(pct);
 
-        el.classList.toggle('is-over', over);
+        el.classList.remove('status-blue', 'status-green', 'status-orange');
+        el.classList.add('status-' + status);
         el.classList.toggle('glow', state.glow);
 
         var widthVal = ringPct + '%';
