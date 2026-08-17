@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import { scanLabel } from '../lib/scanLabel.js'
 import { Card, Input, Button, Badge } from '../design-kit.tsx'
 
 function todayDate() {
@@ -13,7 +14,9 @@ export default function SupplementChecklist() {
   const [showAddForm, setShowAddForm] = useState(false)
   const [newName, setNewName] = useState('')
   const [newDose, setNewDose] = useState('')
+  const [newNutrients, setNewNutrients] = useState({})
   const [saving, setSaving] = useState(false)
+  const [parsing, setParsing] = useState(false)
 
   async function load() {
     const [{ data: supps, error: suppsError }, { data: logs, error: logsError }] = await Promise.all([
@@ -64,7 +67,7 @@ export default function SupplementChecklist() {
     setError(null)
     const { error } = await supabase
       .from('supplements')
-      .insert({ name: newName.trim(), dose_label: newDose.trim() || null })
+      .insert({ name: newName.trim(), dose_label: newDose.trim() || null, nutrients: newNutrients })
     setSaving(false)
     if (error) {
       setError(error.message)
@@ -72,8 +75,27 @@ export default function SupplementChecklist() {
     }
     setNewName('')
     setNewDose('')
+    setNewNutrients({})
     setShowAddForm(false)
     load()
+  }
+
+  async function handleScan(e) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setParsing(true)
+    setError(null)
+    try {
+      const result = await scanLabel(file, 'supplement')
+      setNewName(result.name || '')
+      setNewDose(result.dose_label || '')
+      setNewNutrients(result.nutrients || {})
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setParsing(false)
+    }
   }
 
   if (error) {
@@ -138,6 +160,20 @@ export default function SupplementChecklist() {
 
         {showAddForm && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+            <label
+              className="dk-btn dk-btn--ghost"
+              style={{ display: 'inline-flex', cursor: 'pointer', width: 'fit-content' }}
+            >
+              {parsing ? 'Reading label…' : 'Scan label instead'}
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleScan}
+                disabled={parsing}
+                style={{ display: 'none' }}
+              />
+            </label>
             <Input label="Name" name="supplement-name" value={newName} onChange={(e) => setNewName(e.target.value)} />
             <Input
               label="Dose (optional)"
@@ -146,6 +182,11 @@ export default function SupplementChecklist() {
               value={newDose}
               onChange={(e) => setNewDose(e.target.value)}
             />
+            {Object.keys(newNutrients).length > 0 && (
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)', color: 'var(--muted)' }}>
+                + {Object.keys(newNutrients).length} nutrient{Object.keys(newNutrients).length === 1 ? '' : 's'} detected
+              </div>
+            )}
             <Button onClick={addSupplement} disabled={saving || !newName.trim()}>
               Save
             </Button>
