@@ -1,31 +1,54 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { logContribution, sumContributions } from '../lib/macroMath'
+import { statusForPercent, STATUS_COLORS } from '../lib/macroCalc.js'
 import { Card } from '../design-kit.tsx'
 
 function todayDate() {
   return new Date().toISOString().slice(0, 10)
 }
 
+const ROWS = [
+  { key: 'calories', label: 'Calories', unit: '' },
+  { key: 'protein_g', label: 'Protein', unit: 'g' },
+  { key: 'carbs_g', label: 'Carbs', unit: 'g' },
+  { key: 'fat_g', label: 'Fat', unit: 'g' },
+]
+
 export default function TodayTotals({ refreshKey = 0 }) {
   const [totals, setTotals] = useState(null)
+  const [goal, setGoal] = useState(undefined) // undefined = loading, null = none yet
   const [error, setError] = useState(null)
 
   useEffect(() => {
     let cancelled = false
 
     async function load() {
-      const { data, error } = await supabase
-        .from('logs')
-        .select('grams, foods(*), recipes(*, recipe_ingredients(grams, foods(*)))')
-        .eq('date', todayDate())
+      const [logsRes, goalRes] = await Promise.all([
+        supabase
+          .from('logs')
+          .select('grams, foods(*), recipes(*, recipe_ingredients(grams, foods(*)))')
+          .eq('date', todayDate()),
+        supabase
+          .from('macro_goals')
+          .select('*')
+          .order('effective_date', { ascending: false })
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+      ])
 
       if (cancelled) return
-      if (error) {
-        setError(error.message)
+      if (logsRes.error) {
+        setError(logsRes.error.message)
         return
       }
-      setTotals(sumContributions(data.map(logContribution)))
+      if (goalRes.error) {
+        setError(goalRes.error.message)
+        return
+      }
+      setTotals(sumContributions(logsRes.data.map(logContribution)))
+      setGoal(goalRes.data)
     }
 
     load()
@@ -40,48 +63,69 @@ export default function TodayTotals({ refreshKey = 0 }) {
     )
   }
 
-  if (!totals) {
+  if (!totals || goal === undefined) {
     return <Card eyebrow="Today">Loading…</Card>
+  }
+
+  if (!goal) {
+    return (
+      <Card eyebrow="Today" title="Totals">
+        <span style={{ color: 'var(--muted)', fontSize: 'var(--text-sm)' }}>No goal set yet.</span>
+      </Card>
+    )
   }
 
   return (
     <Card eyebrow="Today" title="Totals">
-      <div style={{ display: 'flex', gap: '2.5rem', flexWrap: 'wrap', alignItems: 'baseline' }}>
-        <Stat label="Calories" value={Math.round(totals.calories)} big />
-        <Stat label="Protein" value={Math.round(totals.protein_g)} unit="g" />
-        <Stat label="Carbs" value={Math.round(totals.carbs_g)} unit="g" />
-        <Stat label="Fat" value={Math.round(totals.fat_g)} unit="g" />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+        {ROWS.map((row) => {
+          const value = totals[row.key]
+          const target = goal[row.key]
+          const pct = target > 0 ? (value / target) * 100 : 0
+          const status = statusForPercent(pct)
+          const widthPct = Math.min(100, pct)
+
+          return (
+            <div key={row.key} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 'var(--text-xs)',
+                  color: 'var(--muted-strong)',
+                }}
+              >
+                <span>{row.label}</span>
+                <span>
+                  {Math.round(value)}
+                  {row.unit} / {Math.round(target)}
+                  {row.unit}
+                </span>
+              </div>
+              <div
+                style={{
+                  width: '100%',
+                  height: '14px',
+                  borderRadius: '999px',
+                  background: 'rgba(255,255,255,.06)',
+                  overflow: 'hidden',
+                }}
+              >
+                <div
+                  style={{
+                    height: '100%',
+                    width: widthPct + '%',
+                    borderRadius: '999px',
+                    background: STATUS_COLORS[status],
+                    transition: 'width 2000ms cubic-bezier(.16,1,.3,1), background 2000ms cubic-bezier(.16,1,.3,1)',
+                  }}
+                />
+              </div>
+            </div>
+          )
+        })}
       </div>
     </Card>
-  )
-}
-
-function Stat({ label, value, unit = '', big = false }) {
-  return (
-    <div>
-      <div
-        style={{
-          fontFamily: 'var(--font-serif)',
-          fontStyle: 'italic',
-          fontSize: big ? '3rem' : '1.75rem',
-          color: big ? 'var(--accent)' : 'var(--fg)',
-          lineHeight: 1,
-        }}
-      >
-        {value}{unit}
-      </div>
-      <div
-        style={{
-          fontFamily: 'var(--font-mono)',
-          fontSize: 'var(--text-xs)',
-          letterSpacing: '.16em',
-          textTransform: 'uppercase',
-          color: 'var(--muted)',
-          marginTop: 'var(--space-2)',
-        }}
-      >
-        {label}
-      </div>
-    </div>
   )
 }

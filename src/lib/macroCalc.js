@@ -45,6 +45,16 @@ export function macrosFromCalories(calories, weightKg) {
   return { protein_g, fat_g, carbs_g }
 }
 
+// Shared 3-state status for a percent-of-target value, used by the
+// capsule bars and the history calendar's hit/miss indicator.
+export const STATUS_COLORS = { blue: '#38BDF8', green: '#22C55E', orange: '#F97316' }
+
+export function statusForPercent(pct) {
+  if (pct > 105) return 'orange'
+  if (pct >= 90) return 'green'
+  return 'blue'
+}
+
 export function calculateMacroGoal({ sex, birthDate, heightCm, weightKg, activityLevel, goalType, rateKgPerWeek }) {
   const age = calculateAge(birthDate)
   const bmr = calculateBMR({ sex, age, heightCm, weightKg })
