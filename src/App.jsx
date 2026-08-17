@@ -2,16 +2,20 @@ import { useEffect, useState } from 'react'
 import { supabase } from './lib/supabaseClient'
 import { PageShell } from './design-kit.tsx'
 import Onboarding from './components/Onboarding.jsx'
+import Nav from './components/Nav.jsx'
+import AdaptiveGoalBanner from './components/AdaptiveGoalBanner.jsx'
 import TodayTotals from './components/TodayTotals.jsx'
 import LogWeight from './components/LogWeight.jsx'
 import QuickAddIngredient from './components/QuickAddIngredient.jsx'
 import ScanFoodLabel from './components/ScanFoodLabel.jsx'
 import QuickAddRecipe from './components/QuickAddRecipe.jsx'
 import SupplementChecklist from './components/SupplementChecklist.jsx'
+import HistoryCalendar from './components/HistoryCalendar.jsx'
 
 export default function App() {
   const [refreshKey, setRefreshKey] = useState(0)
   const [hasProfile, setHasProfile] = useState(null) // null = loading
+  const [page, setPage] = useState('today')
   const logged = () => setRefreshKey((k) => k + 1)
 
   useEffect(() => {
@@ -36,12 +40,21 @@ export default function App() {
 
   return (
     <PageShell>
-      <TodayTotals refreshKey={refreshKey} />
-      <LogWeight onLogged={logged} />
-      <QuickAddIngredient onLogged={logged} />
-      <ScanFoodLabel onLogged={logged} />
-      <QuickAddRecipe onLogged={logged} />
-      <SupplementChecklist />
+      <Nav page={page} onChange={setPage} />
+
+      {page === 'today' && (
+        <>
+          <AdaptiveGoalBanner onAdjusted={logged} />
+          <TodayTotals refreshKey={refreshKey} />
+          <LogWeight onLogged={logged} />
+          <QuickAddIngredient onLogged={logged} />
+          <ScanFoodLabel onLogged={logged} />
+          <QuickAddRecipe onLogged={logged} />
+          <SupplementChecklist />
+        </>
+      )}
+
+      {page === 'history' && <HistoryCalendar />}
     </PageShell>
   )
 }
