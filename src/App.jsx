@@ -2,14 +2,17 @@ import { useState } from 'react'
 import { PageShell } from './design-kit.tsx'
 import TodayTotals from './components/TodayTotals.jsx'
 import QuickAddIngredient from './components/QuickAddIngredient.jsx'
+import QuickAddRecipe from './components/QuickAddRecipe.jsx'
 
 export default function App() {
   const [refreshKey, setRefreshKey] = useState(0)
+  const logged = () => setRefreshKey((k) => k + 1)
 
   return (
     <PageShell>
       <TodayTotals refreshKey={refreshKey} />
-      <QuickAddIngredient onLogged={() => setRefreshKey((k) => k + 1)} />
+      <QuickAddIngredient onLogged={logged} />
+      <QuickAddRecipe onLogged={logged} />
     </PageShell>
   )
 }
