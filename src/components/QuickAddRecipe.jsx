@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { Card, Input, Button } from '../design-kit.tsx'
 import FoodSearchInput from './FoodSearchInput.jsx'
@@ -23,8 +23,13 @@ export default function QuickAddRecipe({ onLogged }) {
   const [gramsNow, setGramsNow] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
+  const skipNextSearch = useRef(false)
 
   useEffect(() => {
+    if (skipNextSearch.current) {
+      skipNextSearch.current = false
+      return
+    }
     setSelectedRecipe(null)
     setShowBuilder(false)
     if (!query.trim()) {
@@ -48,6 +53,7 @@ export default function QuickAddRecipe({ onLogged }) {
   }, [query])
 
   function pickRecipe(recipe) {
+    skipNextSearch.current = true
     setSelectedRecipe(recipe)
     setQuery(recipe.name)
     setSuggestions([])

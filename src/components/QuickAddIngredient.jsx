@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import { orderedMicronutrients } from '../lib/nutrients.js'
 import { Card, Input, Button } from '../design-kit.tsx'
 
 function todayDate() {
@@ -7,6 +8,7 @@ function todayDate() {
 }
 
 const emptyMacros = { calories: '', protein_g: '', carbs_g: '', fat_g: '' }
+const emptyExtra = { fiber_g: '', sugar_g: '', sodium_mg: '' }
 
 export default function QuickAddIngredient({ onLogged }) {
   const [query, setQuery] = useState('')
@@ -15,10 +17,18 @@ export default function QuickAddIngredient({ onLogged }) {
   const [grams, setGrams] = useState('')
   const [showNewForm, setShowNewForm] = useState(false)
   const [newFood, setNewFood] = useState(emptyMacros)
+  const [newExtra, setNewExtra] = useState(emptyExtra)
+  const [showNewExtra, setShowNewExtra] = useState(false)
+  const [showSelectedDetail, setShowSelectedDetail] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
+  const skipNextSearch = useRef(false)
 
   useEffect(() => {
+    if (skipNextSearch.current) {
+      skipNextSearch.current = false
+      return
+    }
     setSelectedFood(null)
     setShowNewForm(false)
     if (!query.trim()) {
@@ -43,9 +53,11 @@ export default function QuickAddIngredient({ onLogged }) {
   }, [query])
 
   function pickFood(food) {
+    skipNextSearch.current = true
     setSelectedFood(food)
     setQuery(food.name)
     setSuggestions([])
+    setShowSelectedDetail(false)
   }
 
   function reset() {
@@ -54,6 +66,9 @@ export default function QuickAddIngredient({ onLogged }) {
     setGrams('')
     setShowNewForm(false)
     setNewFood(emptyMacros)
+    setNewExtra(emptyExtra)
+    setShowNewExtra(false)
+    setShowSelectedDetail(false)
     setError(null)
   }
 
@@ -88,6 +103,9 @@ export default function QuickAddIngredient({ onLogged }) {
         protein_g: parseFloat(newFood.protein_g) || 0,
         carbs_g: parseFloat(newFood.carbs_g) || 0,
         fat_g: parseFloat(newFood.fat_g) || 0,
+        fiber_g: parseFloat(newExtra.fiber_g) || 0,
+        sugar_g: parseFloat(newExtra.sugar_g) || 0,
+        sodium_mg: parseFloat(newExtra.sodium_mg) || 0,
       })
       .select()
     if (foodError) {
@@ -160,6 +178,10 @@ export default function QuickAddIngredient({ onLogged }) {
               Per 100g: {selectedFood.calories} cal · {selectedFood.protein_g}g protein · {selectedFood.carbs_g}g
               carbs · {selectedFood.fat_g}g fat
             </div>
+            <Button variant="ghost" onClick={() => setShowSelectedDetail((v) => !v)}>
+              {showSelectedDetail ? 'Hide' : 'View more'} nutrients
+            </Button>
+            {showSelectedDetail && <FoodDetail food={selectedFood} />}
             <Input
               label="Grams eaten"
               name="grams-selected"
@@ -212,6 +234,38 @@ export default function QuickAddIngredient({ onLogged }) {
                 onChange={(e) => setNewFood((f) => ({ ...f, fat_g: e.target.value }))}
               />
             </div>
+
+            {!showNewExtra && (
+              <Button variant="ghost" onClick={() => setShowNewExtra(true)}>
+                + More nutrients (optional)
+              </Button>
+            )}
+            {showNewExtra && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--space-3)' }}>
+                <Input
+                  label="Fiber g / 100g"
+                  name="fiber_g"
+                  type="number"
+                  value={newExtra.fiber_g}
+                  onChange={(e) => setNewExtra((f) => ({ ...f, fiber_g: e.target.value }))}
+                />
+                <Input
+                  label="Sugar g / 100g"
+                  name="sugar_g"
+                  type="number"
+                  value={newExtra.sugar_g}
+                  onChange={(e) => setNewExtra((f) => ({ ...f, sugar_g: e.target.value }))}
+                />
+                <Input
+                  label="Sodium mg / 100g"
+                  name="sodium_mg"
+                  type="number"
+                  value={newExtra.sodium_mg}
+                  onChange={(e) => setNewExtra((f) => ({ ...f, sodium_mg: e.target.value }))}
+                />
+              </div>
+            )}
+
             <Input
               label="Grams eaten"
               name="grams-new"
@@ -229,5 +283,57 @@ export default function QuickAddIngredient({ onLogged }) {
         {error && <span className="dk-field__error">{error}</span>}
       </div>
     </Card>
+  )
+}
+
+function FoodDetail({ food }) {
+  const extra = [
+    { label: 'Fiber', value: food.fiber_g, unit: 'g' },
+    { label: 'Sugar', value: food.sugar_g, unit: 'g' },
+    { label: 'Sodium', value: food.sodium_mg, unit: 'mg' },
+  ]
+  const micros = orderedMicronutrients(food.micronutrients || {})
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 'var(--space-2)',
+        padding: 'var(--space-3)',
+        background: 'var(--card)',
+        borderRadius: 'var(--radius-sm)',
+      }}
+    >
+      {extra.map((row) => (
+        <NutrientRow key={row.label} {...row} />
+      ))}
+      {micros.map((m) => (
+        <NutrientRow key={m.key} label={m.label} value={food.micronutrients[m.key]} unit={m.unit} />
+      ))}
+      {micros.length === 0 && extra.every((row) => !row.value) && (
+        <span style={{ color: 'var(--muted)', fontSize: 'var(--text-xs)' }}>No additional nutrient data for this food.</span>
+      )}
+    </div>
+  )
+}
+
+function NutrientRow({ label, value, unit }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        fontFamily: 'var(--font-mono)',
+        fontSize: 'var(--text-xs)',
+        color: 'var(--muted-strong)',
+      }}
+    >
+      <span>{label}</span>
+      <span>
+        {Math.round((value || 0) * 10) / 10}
+        {unit}
+      </span>
+    </div>
   )
 }

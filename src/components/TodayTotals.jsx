@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { logContribution, sumContributions } from '../lib/macroMath'
 import { statusForPercent, STATUS_COLORS } from '../lib/macroCalc.js'
-import { Card } from '../design-kit.tsx'
+import { orderedMicronutrients } from '../lib/nutrients.js'
+import { Card, Button } from '../design-kit.tsx'
 
 function todayDate() {
   return new Date().toISOString().slice(0, 10)
@@ -19,6 +20,7 @@ export default function TodayTotals({ refreshKey = 0 }) {
   const [totals, setTotals] = useState(null)
   const [goal, setGoal] = useState(undefined) // undefined = loading, null = none yet
   const [error, setError] = useState(null)
+  const [showMore, setShowMore] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -125,7 +127,67 @@ export default function TodayTotals({ refreshKey = 0 }) {
             </div>
           )
         })}
+
+        <Button variant="ghost" onClick={() => setShowMore((v) => !v)}>
+          {showMore ? 'Hide' : 'View more'} nutrients
+        </Button>
+
+        {showMore && <MoreNutrients totals={totals} />}
       </div>
     </Card>
+  )
+}
+
+const EXTRA_ROWS = [
+  { key: 'fiber_g', label: 'Fiber', unit: 'g' },
+  { key: 'sugar_g', label: 'Sugar', unit: 'g' },
+  { key: 'sodium_mg', label: 'Sodium', unit: 'mg' },
+]
+
+function MoreNutrients({ totals }) {
+  const micros = orderedMicronutrients(totals.micronutrients || {})
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 'var(--space-2)',
+        paddingTop: 'var(--space-2)',
+        borderTop: '1px solid var(--border)',
+      }}
+    >
+      {EXTRA_ROWS.map((row) => (
+        <NutrientRow key={row.key} label={row.label} value={totals[row.key]} unit={row.unit} />
+      ))}
+      {micros.map((m) => (
+        <NutrientRow key={m.key} label={m.label} value={totals.micronutrients[m.key]} unit={m.unit} />
+      ))}
+      {micros.length === 0 && (
+        <span style={{ color: 'var(--muted)', fontSize: 'var(--text-xs)' }}>
+          No micronutrient data yet — logged foods from the whole-foods database will show up here.
+        </span>
+      )}
+    </div>
+  )
+}
+
+function NutrientRow({ label, value, unit }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        fontFamily: 'var(--font-mono)',
+        fontSize: 'var(--text-xs)',
+        color: 'var(--muted-strong)',
+      }}
+    >
+      <span>{label}</span>
+      <span>
+        {Math.round(value * 10) / 10}
+        {unit}
+      </span>
+    </div>
   )
 }
