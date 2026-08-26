@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
-import { orderedMicronutrients } from '../lib/nutrients.js'
+import NutrientSections from './NutrientSections.jsx'
 import { Card, Input, Button } from '../design-kit.tsx'
 
 function todayDate() {
@@ -287,53 +287,15 @@ export default function QuickAddIngredient({ onLogged }) {
 }
 
 function FoodDetail({ food }) {
-  const extra = [
-    { label: 'Fiber', value: food.fiber_g, unit: 'g' },
-    { label: 'Sugar', value: food.sugar_g, unit: 'g' },
-    { label: 'Sodium', value: food.sodium_mg, unit: 'mg' },
-  ]
-  const micros = orderedMicronutrients(food.micronutrients || {})
-
   return (
     <div
       style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 'var(--space-2)',
         padding: 'var(--space-3)',
         background: 'var(--card)',
         borderRadius: 'var(--radius-sm)',
       }}
     >
-      {extra.map((row) => (
-        <NutrientRow key={row.label} {...row} />
-      ))}
-      {micros.map((m) => (
-        <NutrientRow key={m.key} label={m.label} value={food.micronutrients[m.key]} unit={m.unit} />
-      ))}
-      {micros.length === 0 && extra.every((row) => !row.value) && (
-        <span style={{ color: 'var(--muted)', fontSize: 'var(--text-xs)' }}>No additional nutrient data for this food.</span>
-      )}
-    </div>
-  )
-}
-
-function NutrientRow({ label, value, unit }) {
-  return (
-    <div
-      style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        fontFamily: 'var(--font-mono)',
-        fontSize: 'var(--text-xs)',
-        color: 'var(--muted-strong)',
-      }}
-    >
-      <span>{label}</span>
-      <span>
-        {Math.round((value || 0) * 10) / 10}
-        {unit}
-      </span>
+      <NutrientSections totals={food} mode="values" />
     </div>
   )
 }

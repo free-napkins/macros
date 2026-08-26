@@ -11,7 +11,9 @@ export default function ScanFoodLabel({ onLogged }) {
   const [parsing, setParsing] = useState(false)
   const [error, setError] = useState(null)
   const [fields, setFields] = useState(null)
+  const [logMode, setLogMode] = useState('grams') // 'grams' | 'servings'
   const [grams, setGrams] = useState('')
+  const [servings, setServings] = useState('')
   const [saving, setSaving] = useState(false)
 
   async function handleFile(e) {
@@ -31,8 +33,12 @@ export default function ScanFoodLabel({ onLogged }) {
         fiber_g: result.fiber_g ?? 0,
         sugar_g: result.sugar_g ?? 0,
         sodium_mg: result.sodium_mg ?? 0,
+        serving_size_g: result.serving_size_g || null,
+        serving_label: result.serving_label || '',
         micronutrients: result.micronutrients || {},
       })
+      setLogMode(result.serving_size_g ? 'servings' : 'grams')
+      setServings('1')
     } catch (err) {
       setError(err.message)
     } finally {
@@ -47,12 +53,16 @@ export default function ScanFoodLabel({ onLogged }) {
   function reset() {
     setFields(null)
     setGrams('')
+    setServings('')
+    setLogMode('grams')
     setError(null)
   }
 
+  const effectiveGrams =
+    logMode === 'servings' ? (parseFloat(servings) || 0) * (parseFloat(fields?.serving_size_g) || 0) : parseFloat(grams) || 0
+
   async function saveAndLog() {
-    const g = parseFloat(grams)
-    if (!fields?.name?.trim() || !g || g <= 0) return
+    if (!fields?.name?.trim() || !effectiveGrams || effectiveGrams <= 0) return
     setSaving(true)
     setError(null)
     const { data: foodRows, error: foodError } = await supabase
@@ -67,6 +77,8 @@ export default function ScanFoodLabel({ onLogged }) {
         fiber_g: parseFloat(fields.fiber_g) || 0,
         sugar_g: parseFloat(fields.sugar_g) || 0,
         sodium_mg: parseFloat(fields.sodium_mg) || 0,
+        serving_size_g: fields.serving_size_g ? parseFloat(fields.serving_size_g) : null,
+        serving_label: fields.serving_label || null,
         micronutrients: fields.micronutrients || {},
       })
       .select()
@@ -77,7 +89,7 @@ export default function ScanFoodLabel({ onLogged }) {
     }
     const { error: logError } = await supabase
       .from('logs')
-      .insert({ food_id: foodRows[0].id, grams: g, date: todayDate() })
+      .insert({ food_id: foodRows[0].id, grams: effectiveGrams, date: todayDate() })
     setSaving(false)
     if (logError) {
       setError(logError.message)
@@ -162,22 +174,73 @@ export default function ScanFoodLabel({ onLogged }) {
                 value={fields.sodium_mg}
                 onChange={(e) => updateField('sodium_mg', e.target.value)}
               />
+              <Input
+                label="Serving size (g)"
+                name="label-serving-size"
+                type="number"
+                placeholder="e.g. 240"
+                value={fields.serving_size_g || ''}
+                onChange={(e) => updateField('serving_size_g', e.target.value)}
+              />
             </div>
             {microCount > 0 && (
               <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)', color: 'var(--muted)' }}>
                 + {microCount} other nutrient{microCount === 1 ? '' : 's'} detected
               </div>
             )}
-            <Input
-              label="Grams eaten"
-              name="label-grams"
-              type="number"
-              min="0"
-              value={grams}
-              onChange={(e) => setGrams(e.target.value)}
-            />
+
+            {fields.serving_size_g > 0 && (
+              <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', overflow: 'hidden', width: 'fit-content' }}>
+                {['servings', 'grams'].map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setLogMode(m)}
+                    style={{
+                      padding: '6px 14px',
+                      fontFamily: 'var(--font-sans)',
+                      fontSize: 'var(--text-xs)',
+                      fontWeight: 600,
+                      border: 'none',
+                      cursor: 'pointer',
+                      background: logMode === m ? 'var(--accent)' : 'transparent',
+                      color: logMode === m ? 'var(--on-accent)' : 'var(--muted)',
+                    }}
+                  >
+                    {m === 'servings' ? 'By serving' : 'By grams'}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {logMode === 'servings' && fields.serving_size_g > 0 ? (
+              <Input
+                label={`Servings eaten${fields.serving_label ? ` (1 = ${fields.serving_label})` : ''}`}
+                name="label-servings"
+                type="number"
+                min="0"
+                step="0.25"
+                value={servings}
+                onChange={(e) => setServings(e.target.value)}
+              />
+            ) : (
+              <Input
+                label="Grams eaten"
+                name="label-grams"
+                type="number"
+                min="0"
+                value={grams}
+                onChange={(e) => setGrams(e.target.value)}
+              />
+            )}
+            {logMode === 'servings' && effectiveGrams > 0 && (
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)', color: 'var(--muted)' }}>
+                = {Math.round(effectiveGrams)}g
+              </div>
+            )}
+
             <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
-              <Button onClick={saveAndLog} disabled={saving || !grams}>
+              <Button onClick={saveAndLog} disabled={saving || !effectiveGrams}>
                 Save &amp; log
               </Button>
               <Button variant="ghost" onClick={reset} disabled={saving}>

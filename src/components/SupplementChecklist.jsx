@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { scanLabel } from '../lib/scanLabel.js'
+import NutrientSections from './NutrientSections.jsx'
 import { Card, Input, Button, Badge } from '../design-kit.tsx'
 
 function todayDate() {
@@ -17,6 +18,7 @@ export default function SupplementChecklist() {
   const [newNutrients, setNewNutrients] = useState({})
   const [saving, setSaving] = useState(false)
   const [parsing, setParsing] = useState(false)
+  const [expandedId, setExpandedId] = useState(null)
 
   async function load() {
     const [{ data: supps, error: suppsError }, { data: logs, error: logsError }] = await Promise.all([
@@ -123,31 +125,56 @@ export default function SupplementChecklist() {
 
         {supplements.map((s) => {
           const taken = logsBySupplement[s.id]?.taken ?? false
+          const expanded = expandedId === s.id
+          const nutrientCount = Object.keys(s.nutrients || {}).length
           return (
-            <div
-              key={s.id}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 'var(--space-3)',
-              }}
-            >
-              <div>
-                <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500 }}>{s.name}</div>
-                {s.dose_label && (
-                  <div style={{ fontSize: 'var(--text-xs)', color: 'var(--muted)' }}>{s.dose_label}</div>
-                )}
+            <div key={s.id} style={{ borderBottom: '1px solid var(--border)', paddingBottom: 'var(--space-3)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
+                <button
+                  type="button"
+                  onClick={() => setExpandedId(expanded ? null : s.id)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    color: 'inherit',
+                  }}
+                >
+                  <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500 }}>{s.name}</div>
+                  <div style={{ fontSize: 'var(--text-xs)', color: 'var(--muted)' }}>
+                    {s.dose_label}
+                    {s.dose_label && nutrientCount > 0 ? ' · ' : ''}
+                    {nutrientCount > 0 && `${expanded ? 'Hide' : 'View'} nutrition facts`}
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => toggleTaken(s)}
+                  style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', flexShrink: 0 }}
+                >
+                  <Badge tone={taken ? 'accent' : 'neutral'} dot>
+                    {taken ? 'Taken' : 'Not yet'}
+                  </Badge>
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => toggleTaken(s)}
-                style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
-              >
-                <Badge tone={taken ? 'accent' : 'neutral'} dot>
-                  {taken ? 'Taken' : 'Not yet'}
-                </Badge>
-              </button>
+
+              {expanded && nutrientCount > 0 && (
+                <div
+                  style={{
+                    marginTop: 'var(--space-3)',
+                    padding: 'var(--space-3)',
+                    background: 'var(--card)',
+                    borderRadius: 'var(--radius-sm)',
+                  }}
+                >
+                  <NutrientSections
+                    totals={{ calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0, fiber_g: 0, sugar_g: 0, sodium_mg: 0, micronutrients: s.nutrients }}
+                    mode="values"
+                  />
+                </div>
+              )}
             </div>
           )
         })}

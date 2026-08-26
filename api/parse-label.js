@@ -1,3 +1,11 @@
+const MICRO_KEY_HINT =
+  'Use these exact keys where the label lists them (per 100g): vitamin_a_mcg, vitamin_c_mg, vitamin_d_mcg, ' +
+  'vitamin_e_mg, vitamin_k_mcg, vitamin_b1_mg, vitamin_b2_mg, vitamin_b3_mg, vitamin_b5_mg, vitamin_b6_mg, ' +
+  'vitamin_b12_mcg, folate_mcg, calcium_mg, iron_mg, magnesium_mg, phosphorus_mg, potassium_mg, zinc_mg, ' +
+  'copper_mg, manganese_mg, selenium_mcg, saturated_g, monounsaturated_g, polyunsaturated_g, trans_fat_g, ' +
+  'cholesterol_mg, omega3_g, omega6_g, alcohol_g, caffeine_mg, water_g, starch_g, ' +
+  'insoluble_fiber_g, soluble_fiber_g. Only include keys actually printed on the label.'
+
 const FOOD_TOOL = {
   name: 'extract_nutrition',
   description: 'Extract nutrition facts from a food or product label photo, normalized to per-100g values.',
@@ -12,9 +20,11 @@ const FOOD_TOOL = {
       fiber_g: { type: 'number', description: 'Fiber grams per 100g' },
       sugar_g: { type: 'number', description: 'Sugar grams per 100g' },
       sodium_mg: { type: 'number', description: 'Sodium mg per 100g' },
+      serving_size_g: { type: 'number', description: 'The serving size printed on the label, converted to grams (e.g. "1 cup (240g)" -> 240)' },
+      serving_label: { type: 'string', description: 'The serving size exactly as printed, e.g. "1 cup", "2 tbsp", "1 slice (28g)"' },
       micronutrients: {
         type: 'object',
-        description: 'Any other listed nutrients per 100g as key/value pairs, e.g. {"vitamin_d_mcg": 2.5, "calcium_mg": 120}',
+        description: 'Any other listed nutrients per 100g as key/value pairs. ' + MICRO_KEY_HINT,
         additionalProperties: { type: 'number' },
       },
     },
@@ -32,7 +42,10 @@ const SUPPLEMENT_TOOL = {
       dose_label: { type: 'string', description: 'Serving size as printed, e.g. "1 tablet" or "2 capsules"' },
       nutrients: {
         type: 'object',
-        description: 'Nutrients per serving as key/value pairs, e.g. {"vitamin_d3_mcg": 25, "zinc_mg": 15}',
+        description:
+          'Nutrients per serving as key/value pairs, e.g. {"vitamin_d_mcg": 25, "zinc_mg": 15}. ' +
+          'Map label names to these keys regardless of exact wording (e.g. "Vitamin D3" or "Cholecalciferol" -> vitamin_d_mcg, "Cobalamin"/"Methylcobalamin" -> vitamin_b12_mcg). ' +
+          MICRO_KEY_HINT,
         additionalProperties: { type: 'number' },
       },
     },

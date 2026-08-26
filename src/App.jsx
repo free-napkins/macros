@@ -12,6 +12,7 @@ import QuickAddRecipe from './components/QuickAddRecipe.jsx'
 import SupplementChecklist from './components/SupplementChecklist.jsx'
 import HistoryCalendar from './components/HistoryCalendar.jsx'
 import Reveal from './components/Reveal.jsx'
+import { UnitProvider } from './lib/UnitContext.jsx'
 
 export default function App() {
   const [refreshKey, setRefreshKey] = useState(0)
@@ -34,13 +35,16 @@ export default function App() {
   if (!hasProfile) {
     return (
       <PageShell>
-        <Onboarding onComplete={logged} />
+        <UnitProvider>
+          <Onboarding onComplete={logged} />
+        </UnitProvider>
       </PageShell>
     )
   }
 
   return (
     <PageShell>
+      <UnitProvider refreshKey={refreshKey}>
       <Nav page={page} onChange={setPage} />
 
       {page === 'today' && (
@@ -56,6 +60,7 @@ export default function App() {
       )}
 
       {page === 'history' && <Reveal><HistoryCalendar /></Reveal>}
+      </UnitProvider>
     </PageShell>
   )
 }

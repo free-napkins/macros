@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import { useUnitSystem } from '../lib/UnitContext.jsx'
+import { kgToLb, lbToKg, WEIGHT_UNIT_LABEL } from '../lib/units.js'
 import { Card, Input, Button } from '../design-kit.tsx'
 
 function todayDate() {
@@ -7,7 +9,8 @@ function todayDate() {
 }
 
 export default function LogWeight({ onLogged }) {
-  const [weightKg, setWeightKg] = useState('')
+  const { unitSystem } = useUnitSystem()
+  const [weightDisplay, setWeightDisplay] = useState('')
   const [todayEntry, setTodayEntry] = useState(undefined) // undefined = loading
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
@@ -23,21 +26,26 @@ export default function LogWeight({ onLogged }) {
       return
     }
     setTodayEntry(data)
-    if (data) setWeightKg(String(data.weight_kg))
+    if (data) {
+      const val = unitSystem === 'imperial' ? kgToLb(data.weight_kg) : data.weight_kg
+      setWeightDisplay(String(Math.round(val * 10) / 10))
+    }
   }
 
   useEffect(() => {
     load()
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [unitSystem])
 
   async function save() {
-    const w = parseFloat(weightKg)
-    if (!w || w <= 0) return
+    const displayVal = parseFloat(weightDisplay)
+    if (!displayVal || displayVal <= 0) return
+    const weightKg = unitSystem === 'imperial' ? lbToKg(displayVal) : displayVal
     setSaving(true)
     setError(null)
     const { error } = await supabase
       .from('weight_logs')
-      .upsert({ date: todayDate(), weight_kg: w }, { onConflict: 'date' })
+      .upsert({ date: todayDate(), weight_kg: weightKg }, { onConflict: 'date' })
     setSaving(false)
     if (error) {
       setError(error.message)
@@ -47,21 +55,23 @@ export default function LogWeight({ onLogged }) {
     onLogged?.()
   }
 
+  const unitLabel = WEIGHT_UNIT_LABEL[unitSystem]
+
   return (
     <Card eyebrow="Today" title="Weight">
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 'var(--space-3)' }}>
         <div style={{ flex: 1 }}>
           <Input
-            label="Weight (kg)"
+            label={`Weight (${unitLabel})`}
             name="today-weight"
             type="number"
             min="0"
             step="0.1"
-            value={weightKg}
-            onChange={(e) => setWeightKg(e.target.value)}
+            value={weightDisplay}
+            onChange={(e) => setWeightDisplay(e.target.value)}
           />
         </div>
-        <Button onClick={save} disabled={saving || !weightKg}>
+        <Button onClick={save} disabled={saving || !weightDisplay}>
           {todayEntry ? 'Update' : 'Log'}
         </Button>
       </div>

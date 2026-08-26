@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { logContribution } from '../lib/macroMath'
 import { statusForPercent, STATUS_COLORS } from '../lib/macroCalc.js'
+import { useUnitSystem } from '../lib/UnitContext.jsx'
+import { kgToLb, WEIGHT_UNIT_LABEL } from '../lib/units.js'
 import { Card, Button } from '../design-kit.tsx'
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -26,6 +28,7 @@ function goalForDate(goals, dateStr) {
 }
 
 export default function HistoryCalendar() {
+  const { unitSystem } = useUnitSystem()
   const [viewDate, setViewDate] = useState(() => {
     const d = new Date()
     return new Date(d.getFullYear(), d.getMonth(), 1)
@@ -179,7 +182,8 @@ export default function HistoryCalendar() {
               </div>
               {weight !== undefined && (
                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: '.62rem', color: 'var(--muted-strong)' }}>
-                  {weight}kg
+                  {unitSystem === 'imperial' ? Math.round(kgToLb(weight) * 10) / 10 : weight}
+                  {WEIGHT_UNIT_LABEL[unitSystem]}
                 </span>
               )}
             </div>
