@@ -6,7 +6,7 @@
   WHAT THIS IS
   A visual playground for redesigning the macro app's look. Four
   sections:
-    1. Ten complete theme presets (palette + font pairing + shape +
+    1. Thirteen complete theme presets (palette + font pairing + shape +
        shadow language), shown as swatch cards so you get the whole
        feel of each at a glance.
     2. A live re-skin of real app components (nav, quick-add card,
@@ -85,6 +85,7 @@
      ============================================================ */
   .theme-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:22px}
   .theme-card{
+    position:relative;overflow:hidden;
     border-radius:var(--t-radius);
     background:var(--t-bg);
     border:1px solid var(--t-border);
@@ -93,7 +94,15 @@
     display:flex;flex-direction:column;gap:16px;
     transition:transform 260ms var(--ease);
     cursor:pointer;
+    backdrop-filter:blur(var(--t-backdrop-blur,0px));-webkit-backdrop-filter:blur(var(--t-backdrop-blur,0px));
   }
+  /* faint grid-line texture, opt-in per theme via JS adding this class */
+  .t-grid-bg::before{
+    content:'';position:absolute;inset:0;z-index:0;pointer-events:none;
+    background-image:linear-gradient(var(--t-border) 1px,transparent 1px),linear-gradient(90deg,var(--t-border) 1px,transparent 1px);
+    background-size:26px 26px;
+  }
+  .t-grid-bg > *{position:relative;z-index:1}
   .theme-card:hover{transform:translateY(-4px)}
   .theme-card__swatches{display:flex;gap:6px}
   .theme-card__swatch{width:22px;height:22px;border-radius:50%;border:1px solid rgba(0,0,0,.08)}
@@ -122,6 +131,7 @@
   .preview-bar__label{font-family:var(--font-mono);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
 
   .preview-surface{
+    position:relative;overflow:hidden;
     background:var(--t-bg);border:1px solid var(--t-border);border-radius:calc(var(--t-radius) + 6px);
     padding:32px;transition:background 320ms var(--ease),border-color 320ms var(--ease);
   }
@@ -133,8 +143,10 @@
 
   .mockup-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px;margin-bottom:44px}
   .mockup-card{
+    position:relative;overflow:hidden;
     background:var(--t-surface);border:1px solid var(--t-border);border-radius:var(--t-radius);
     box-shadow:var(--t-shadow);padding:20px;
+    backdrop-filter:blur(var(--t-backdrop-blur,0px));-webkit-backdrop-filter:blur(var(--t-backdrop-blur,0px));
   }
   .mockup-eyebrow{font-family:var(--t-font-mono, monospace);font-size:.64rem;letter-spacing:.12em;text-transform:uppercase;color:var(--t-muted);margin-bottom:6px}
   .mockup-heading{font-family:var(--t-font-heading);font-style:var(--t-heading-style);font-weight:var(--t-heading-weight);color:var(--t-fg);font-size:1.2rem;margin-bottom:14px}
@@ -173,6 +185,7 @@
     background:var(--t-surface);border:1px solid var(--t-border);border-radius:var(--t-radius);
     padding:22px;min-height:120px;display:flex;flex-direction:column;justify-content:space-between;
     box-shadow:var(--t-shadow);
+    backdrop-filter:blur(var(--t-backdrop-blur,0px));-webkit-backdrop-filter:blur(var(--t-backdrop-blur,0px));
   }
   .hover-tile__label{font-family:var(--t-font-heading);font-style:var(--t-heading-style);font-weight:var(--t-heading-weight);color:var(--t-fg);font-size:1.05rem;position:relative;z-index:1}
   .hover-tile__desc{font-family:var(--t-font-mono, monospace);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--t-muted);position:relative;z-index:1}
@@ -223,8 +236,9 @@
      ============================================================ */
   .entrance-grid{max-width:560px;margin:0 auto;width:100%}
   .entrance-tile{
-    position:relative;background:var(--t-surface);border:1px solid var(--t-border);border-radius:var(--t-radius);
+    position:relative;overflow:hidden;background:var(--t-surface);border:1px solid var(--t-border);border-radius:var(--t-radius);
     box-shadow:var(--t-shadow);padding:24px;cursor:pointer;
+    backdrop-filter:blur(var(--t-backdrop-blur,0px));-webkit-backdrop-filter:blur(var(--t-backdrop-blur,0px));
   }
   .entrance-tile.selected::after{
     content:'\2713 Selected';position:absolute;top:14px;left:14px;z-index:2;
@@ -292,7 +306,7 @@
   <div class="lab-eyebrow">Design exploration</div>
   <h1 class="lab-title">Design system lab</h1>
   <p class="lab-sub">
-    Ten complete theme presets, a live re-skin of real app components, a hover-style gallery,
+    Thirteen complete theme presets, a live re-skin of real app components, a hover-style gallery,
     and a scroll/entrance-animation gallery. Click a theme card, a hover tile, and an entrance
     tile to build your picks — the bar above always shows your current selection and copies
     all three at once.
@@ -303,7 +317,7 @@
   <div class="section-head">
     <div>
       <div class="section-eyebrow">01 · Gallery</div>
-      <div class="section-title">Ten themes</div>
+      <div class="section-title">Thirteen themes</div>
     </div>
   </div>
   <div class="theme-grid" id="themeGrid"></div>
@@ -471,6 +485,33 @@
       radius: '4px', shadow: '6px 6px 0 0 var(--t-accent)', btnShadow: 'none',
       hardShadow: true,
     },
+    {
+      id: 'neon-glass', name: 'Neon Glass', tagline: 'Tech pick — frosted glass cards, mint neon glow.',
+      bg: '#080B09', surface: 'rgba(255,255,255,.045)', fg: '#F3FFF9', muted: 'rgba(243,255,249,.55)',
+      accent: '#3CFF9E', onAccent: '#00170B', border: 'rgba(60,255,158,.2)',
+      fontHeading: "'Space Grotesk', sans-serif", fontBody: "'Inter', sans-serif", fontMono: "'JetBrains Mono', monospace",
+      headingStyle: 'normal', headingWeight: 600,
+      radius: '26px', shadow: '0 0 1px rgba(60,255,158,.3), 0 30px 60px -20px rgba(60,255,158,.4)', btnShadow: '0 0 24px rgba(60,255,158,.55)',
+      backdropBlur: '22px',
+    },
+    {
+      id: 'data-terminal', name: 'Data Terminal', tagline: 'Tech pick — wireframe-on-black, analyst-terminal mono.',
+      bg: '#000000', surface: 'rgba(255,255,255,.025)', fg: '#EDEDED', muted: 'rgba(237,237,237,.5)',
+      accent: '#FF3B30', onAccent: '#0A0A0A', border: 'rgba(237,237,237,.16)',
+      fontHeading: "'JetBrains Mono', monospace", fontBody: "'JetBrains Mono', monospace", fontMono: "'JetBrains Mono', monospace",
+      headingStyle: 'normal', headingWeight: 600,
+      radius: '4px', shadow: '0 0 0 1px rgba(237,237,237,.08)', btnShadow: 'none',
+      gridPattern: true,
+    },
+    {
+      id: 'cyber-grid', name: 'Cyber Grid', tagline: 'Tech pick — electric cyan glow over a fine grid.',
+      bg: '#05070D', surface: 'rgba(255,255,255,.045)', fg: '#EAF6FF', muted: 'rgba(234,246,255,.55)',
+      accent: '#22D3EE', onAccent: '#001318', border: 'rgba(34,211,238,.2)',
+      fontHeading: "'Space Grotesk', sans-serif", fontBody: "'Inter', sans-serif", fontMono: "'JetBrains Mono', monospace",
+      headingStyle: 'normal', headingWeight: 600,
+      radius: '14px', shadow: '0 0 1px rgba(34,211,238,.3), 0 24px 50px -20px rgba(34,211,238,.4)', btnShadow: '0 0 20px rgba(34,211,238,.5)',
+      gridPattern: true, backdropBlur: '14px',
+    },
   ];
 
   const EASE_TXT = 'cubic-bezier(.16,1,.3,1)';
@@ -563,17 +604,21 @@
       '--t-font-heading:' + t.fontHeading, '--t-font-body:' + t.fontBody, '--t-font-mono:' + t.fontMono,
       '--t-heading-style:' + t.headingStyle, '--t-heading-weight:' + t.headingWeight,
       '--t-radius:' + t.radius, '--t-shadow:' + t.shadow, '--t-btn-shadow:' + t.btnShadow,
+      '--t-backdrop-blur:' + (t.backdropBlur || '0px'),
     ].join(';');
   }
 
   function tokensText(t) {
-    return [
+    const lines = [
       '--bg: ' + t.bg, '--surface: ' + t.surface, '--fg: ' + t.fg, '--muted: ' + t.muted,
       '--accent: ' + t.accent, '--on-accent: ' + t.onAccent, '--border: ' + t.border,
       '--font-heading: ' + t.fontHeading, '--font-body: ' + t.fontBody, '--font-mono: ' + t.fontMono,
       '--heading-style: ' + t.headingStyle, '--heading-weight: ' + t.headingWeight,
-      '--radius: ' + t.radius, '--shadow: ' + t.shadow,
-    ].join(';\n') + ';'
+      '--radius: ' + t.radius, '--shadow: ' + t.shadow, '--btn-shadow: ' + t.btnShadow,
+    ];
+    if (t.backdropBlur) lines.push('--backdrop-blur: ' + t.backdropBlur + ' /* apply via backdrop-filter: blur(var(--backdrop-blur)) on card surfaces */');
+    if (t.gridPattern) lines.push('/* also uses a faint grid-line background texture — see .t-grid-bg in this file’s CSS for the pattern */');
+    return lines.join(';\n') + ';'
   }
 
   function copyText(text) {
@@ -596,7 +641,7 @@
     const grid = document.getElementById('themeGrid');
     THEMES.forEach((t) => {
       const card = document.createElement('div');
-      card.className = 'theme-card';
+      card.className = 'theme-card' + (t.gridPattern ? ' t-grid-bg' : '');
       card.setAttribute('style', themeVarsStyle(t));
 
       const swatchColors = [t.bg, t.surface, t.accent, t.fg];
@@ -657,6 +702,7 @@
 
   function applyThemeTo(el, t) {
     el.setAttribute('style', (el.getAttribute('style') || '').split(';').filter(s => s && !s.trim().startsWith('--t-')).join(';') + ';' + themeVarsStyle(t));
+    el.classList.toggle('t-grid-bg', !!t.gridPattern);
   }
 
   let currentThemeId = THEMES[0].id;
