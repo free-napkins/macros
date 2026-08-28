@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import { useSession } from '../lib/SessionContext.jsx'
 import { calculateMacroGoal } from '../lib/macroCalc.js'
 import { lbToKg, feetInchesToCm } from '../lib/units.js'
 import { Card, Input, Button } from '../design-kit.tsx'
@@ -24,6 +25,7 @@ const initial = {
 }
 
 export default function Onboarding({ onComplete }) {
+  const session = useSession()
   const [form, setForm] = useState(initial)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
@@ -65,6 +67,7 @@ export default function Onboarding({ onComplete }) {
     })
 
     const { error: profileError } = await supabase.from('profile').insert({
+      user_id: session.user.id,
       sex: form.sex,
       birth_date: form.birthDate,
       height_cm: heightCm,
@@ -81,7 +84,7 @@ export default function Onboarding({ onComplete }) {
 
     const { error: weightError } = await supabase
       .from('weight_logs')
-      .upsert({ date: todayDate(), weight_kg: weightKg }, { onConflict: 'date' })
+      .upsert({ user_id: session.user.id, date: todayDate(), weight_kg: weightKg }, { onConflict: 'user_id,date' })
     if (weightError) {
       setSaving(false)
       setError(weightError.message)
@@ -89,6 +92,7 @@ export default function Onboarding({ onComplete }) {
     }
 
     const { error: goalError } = await supabase.from('macro_goals').insert({
+      user_id: session.user.id,
       effective_date: todayDate(),
       calories: goal.calories,
       protein_g: goal.protein_g,

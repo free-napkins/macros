@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import { useSession } from '../lib/SessionContext.jsx'
 import { logContribution, sumContributions } from '../lib/macroMath'
 import { statusForPercent, STATUS_COLORS } from '../lib/macroCalc.js'
 import NutrientSections from './NutrientSections.jsx'
@@ -17,6 +18,7 @@ const ROWS = [
 ]
 
 export default function TodayTotals({ refreshKey = 0 }) {
+  const session = useSession()
   const [totals, setTotals] = useState(null)
   const [goal, setGoal] = useState(undefined) // undefined = loading, null = none yet
   const [sexWeight, setSexWeight] = useState(null)
@@ -24,23 +26,27 @@ export default function TodayTotals({ refreshKey = 0 }) {
   const [showMore, setShowMore] = useState(false)
 
   useEffect(() => {
+    if (!session) return
     let cancelled = false
 
     async function load() {
+      const userId = session.user.id
       const [logsRes, goalRes, profileRes, weightRes] = await Promise.all([
         supabase
           .from('logs')
           .select('grams, foods(*), recipes(*, recipe_ingredients(grams, foods(*)))')
+          .eq('user_id', userId)
           .eq('date', todayDate()),
         supabase
           .from('macro_goals')
           .select('*')
+          .eq('user_id', userId)
           .order('effective_date', { ascending: false })
           .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle(),
-        supabase.from('profile').select('sex').order('created_at', { ascending: false }).limit(1).maybeSingle(),
-        supabase.from('weight_logs').select('weight_kg').order('date', { ascending: false }).limit(1).maybeSingle(),
+        supabase.from('profile').select('sex').eq('user_id', userId).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+        supabase.from('weight_logs').select('weight_kg').eq('user_id', userId).order('date', { ascending: false }).limit(1).maybeSingle(),
       ])
 
       if (cancelled) return
@@ -62,7 +68,7 @@ export default function TodayTotals({ refreshKey = 0 }) {
 
     load()
     return () => { cancelled = true }
-  }, [refreshKey])
+  }, [session, refreshKey])
 
   if (error) {
     return (

@@ -1,3 +1,5 @@
+import { supabase } from './supabaseClient'
+
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -13,9 +15,15 @@ function fileToBase64(file) {
 export async function scanLabel(file, kind) {
   const imageBase64 = await fileToBase64(file)
   const mediaType = file.type || 'image/jpeg'
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
   const res = await fetch('/api/parse-label', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: {
+      'content-type': 'application/json',
+      ...(session ? { authorization: `Bearer ${session.access_token}` } : {}),
+    },
     body: JSON.stringify({ imageBase64, mediaType, kind }),
   })
   const data = await res.json()

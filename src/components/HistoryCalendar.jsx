@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import { useSession } from '../lib/SessionContext.jsx'
 import { logContribution } from '../lib/macroMath'
 import { statusForPercent, STATUS_COLORS } from '../lib/macroCalc.js'
 import { useUnitSystem } from '../lib/UnitContext.jsx'
@@ -28,6 +29,7 @@ function goalForDate(goals, dateStr) {
 }
 
 export default function HistoryCalendar() {
+  const session = useSession()
   const { unitSystem } = useUnitSystem()
   const [viewDate, setViewDate] = useState(() => {
     const d = new Date()
@@ -47,18 +49,21 @@ export default function HistoryCalendar() {
   const monthEndStr = toDateStr(monthEnd)
 
   useEffect(() => {
+    if (!session) return
     let cancelled = false
     setLoading(true)
+    const userId = session.user.id
 
     async function load() {
       const [weightRes, logsRes, goalsRes] = await Promise.all([
-        supabase.from('weight_logs').select('date, weight_kg').gte('date', monthStartStr).lte('date', monthEndStr),
+        supabase.from('weight_logs').select('date, weight_kg').eq('user_id', userId).gte('date', monthStartStr).lte('date', monthEndStr),
         supabase
           .from('logs')
           .select('date, grams, foods(*), recipes(*, recipe_ingredients(grams, foods(*)))')
+          .eq('user_id', userId)
           .gte('date', monthStartStr)
           .lte('date', monthEndStr),
-        supabase.from('macro_goals').select('*').order('effective_date', { ascending: true }),
+        supabase.from('macro_goals').select('*').eq('user_id', userId).order('effective_date', { ascending: true }),
       ])
 
       if (cancelled) return
@@ -86,7 +91,7 @@ export default function HistoryCalendar() {
 
     load()
     return () => { cancelled = true }
-  }, [monthStartStr, monthEndStr])
+  }, [session, monthStartStr, monthEndStr])
 
   const cells = useMemo(() => {
     const daysInMonth = monthEnd.getDate()

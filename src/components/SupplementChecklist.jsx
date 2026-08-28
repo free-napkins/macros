@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import { useSession } from '../lib/SessionContext.jsx'
 import { scanLabel } from '../lib/scanLabel.js'
 import NutrientSections from './NutrientSections.jsx'
 import { Card, Input, Button, Badge } from '../design-kit.tsx'
@@ -9,6 +10,7 @@ function todayDate() {
 }
 
 export default function SupplementChecklist() {
+  const session = useSession()
   const [supplements, setSupplements] = useState(null)
   const [logsBySupplement, setLogsBySupplement] = useState({})
   const [error, setError] = useState(null)
@@ -21,9 +23,11 @@ export default function SupplementChecklist() {
   const [expandedId, setExpandedId] = useState(null)
 
   async function load() {
+    if (!session) return
+    const userId = session.user.id
     const [{ data: supps, error: suppsError }, { data: logs, error: logsError }] = await Promise.all([
-      supabase.from('supplements').select('*').order('name'),
-      supabase.from('supplement_logs').select('*').eq('date', todayDate()),
+      supabase.from('supplements').select('*').eq('user_id', userId).order('name'),
+      supabase.from('supplement_logs').select('*').eq('user_id', userId).eq('date', todayDate()),
     ])
     if (suppsError) {
       setError(suppsError.message)
@@ -39,7 +43,8 @@ export default function SupplementChecklist() {
 
   useEffect(() => {
     load()
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session])
 
   async function toggleTaken(supplement) {
     const currentlyTaken = logsBySupplement[supplement.id]?.taken ?? false
@@ -48,6 +53,7 @@ export default function SupplementChecklist() {
       .from('supplement_logs')
       .upsert(
         {
+          user_id: session.user.id,
           supplement_id: supplement.id,
           date: todayDate(),
           taken: nextTaken,
@@ -69,7 +75,7 @@ export default function SupplementChecklist() {
     setError(null)
     const { error } = await supabase
       .from('supplements')
-      .insert({ name: newName.trim(), dose_label: newDose.trim() || null, nutrients: newNutrients })
+      .insert({ user_id: session.user.id, name: newName.trim(), dose_label: newDose.trim() || null, nutrients: newNutrients })
     setSaving(false)
     if (error) {
       setError(error.message)

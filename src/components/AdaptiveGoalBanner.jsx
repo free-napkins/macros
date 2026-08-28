@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import { useSession } from '../lib/SessionContext.jsx'
 import { logContribution } from '../lib/macroMath'
 import { computeAdaptiveAdjustment } from '../lib/adaptiveGoals.js'
 import { Card, Button, Badge } from '../design-kit.tsx'
@@ -9,26 +10,30 @@ function todayDate() {
 }
 
 export default function AdaptiveGoalBanner({ onAdjusted }) {
+  const session = useSession()
   const [result, setResult] = useState(null)
   const [dismissed, setDismissed] = useState(false)
 
   useEffect(() => {
+    if (!session) return
     let cancelled = false
+    const userId = session.user.id
 
     async function run() {
       const [{ data: profile }, { data: goals }] = await Promise.all([
-        supabase.from('profile').select('*').order('created_at', { ascending: false }).limit(1).maybeSingle(),
-        supabase.from('macro_goals').select('*').order('effective_date', { ascending: true }),
+        supabase.from('profile').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+        supabase.from('macro_goals').select('*').eq('user_id', userId).order('effective_date', { ascending: true }),
       ])
       if (cancelled || !profile || !goals || goals.length === 0) return
 
       const lastGoal = goals[goals.length - 1]
 
       const [{ data: weightRows }, { data: logRows }] = await Promise.all([
-        supabase.from('weight_logs').select('date, weight_kg').gte('date', lastGoal.effective_date),
+        supabase.from('weight_logs').select('date, weight_kg').eq('user_id', userId).gte('date', lastGoal.effective_date),
         supabase
           .from('logs')
           .select('date, grams, foods(*), recipes(*, recipe_ingredients(grams, foods(*)))')
+          .eq('user_id', userId)
           .gte('date', lastGoal.effective_date),
       ])
       if (cancelled || !weightRows || !logRows) return
@@ -57,6 +62,7 @@ export default function AdaptiveGoalBanner({ onAdjusted }) {
       if (!adjustment || cancelled) return
 
       const { error } = await supabase.from('macro_goals').insert({
+        user_id: userId,
         effective_date: todayDate(),
         calories: adjustment.calories,
         protein_g: adjustment.protein_g,
@@ -72,10 +78,10 @@ export default function AdaptiveGoalBanner({ onAdjusted }) {
 
     run()
     return () => { cancelled = true }
-    // Runs once per page load — not tied to refreshKey, to avoid
+    // Runs once per session load — not tied to refreshKey, to avoid
     // re-checking (and potentially re-inserting) on every quick-add.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [session])
 
   if (!result || dismissed) return null
 

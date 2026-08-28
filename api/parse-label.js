@@ -1,3 +1,5 @@
+import { createClient } from '@supabase/supabase-js'
+
 const MICRO_KEY_HINT =
   'Use these exact keys where the label lists them (per 100g): vitamin_a_mcg, vitamin_c_mg, vitamin_d_mcg, ' +
   'vitamin_e_mg, vitamin_k_mcg, vitamin_b1_mg, vitamin_b2_mg, vitamin_b3_mg, vitamin_b5_mg, vitamin_b6_mg, ' +
@@ -56,6 +58,25 @@ const SUPPLEMENT_TOOL = {
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' })
+    return
+  }
+
+  const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '')
+  if (!token) {
+    res.status(401).json({ error: 'Not authenticated' })
+    return
+  }
+  // Reuses the same Supabase project vars already configured for the client
+  // build (VITE_-prefixed vars are still plain process.env entries at
+  // runtime in a Vercel serverless function — the prefix only controls
+  // what Vite inlines into the browser bundle).
+  const supabaseServer = createClient(process.env.VITE_SUPABASE_URL, process.env.VITE_SUPABASE_ANON_KEY)
+  const {
+    data: { user },
+    error: authError,
+  } = await supabaseServer.auth.getUser(token)
+  if (authError || !user) {
+    res.status(401).json({ error: 'Not authenticated' })
     return
   }
 

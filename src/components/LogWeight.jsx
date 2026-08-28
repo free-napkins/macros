@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import { useSession } from '../lib/SessionContext.jsx'
 import { useUnitSystem } from '../lib/UnitContext.jsx'
 import { kgToLb, lbToKg, WEIGHT_UNIT_LABEL } from '../lib/units.js'
 import { Card, Input, Button } from '../design-kit.tsx'
@@ -9,6 +10,7 @@ function todayDate() {
 }
 
 export default function LogWeight({ onLogged }) {
+  const session = useSession()
   const { unitSystem } = useUnitSystem()
   const [weightDisplay, setWeightDisplay] = useState('')
   const [todayEntry, setTodayEntry] = useState(undefined) // undefined = loading
@@ -16,9 +18,11 @@ export default function LogWeight({ onLogged }) {
   const [error, setError] = useState(null)
 
   async function load() {
+    if (!session) return
     const { data, error } = await supabase
       .from('weight_logs')
       .select('*')
+      .eq('user_id', session.user.id)
       .eq('date', todayDate())
       .maybeSingle()
     if (error) {
@@ -35,9 +39,10 @@ export default function LogWeight({ onLogged }) {
   useEffect(() => {
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [unitSystem])
+  }, [session, unitSystem])
 
   async function save() {
+    if (!session) return
     const displayVal = parseFloat(weightDisplay)
     if (!displayVal || displayVal <= 0) return
     const weightKg = unitSystem === 'imperial' ? lbToKg(displayVal) : displayVal
@@ -45,7 +50,7 @@ export default function LogWeight({ onLogged }) {
     setError(null)
     const { error } = await supabase
       .from('weight_logs')
-      .upsert({ date: todayDate(), weight_kg: weightKg }, { onConflict: 'date' })
+      .upsert({ user_id: session.user.id, date: todayDate(), weight_kg: weightKg }, { onConflict: 'user_id,date' })
     setSaving(false)
     if (error) {
       setError(error.message)

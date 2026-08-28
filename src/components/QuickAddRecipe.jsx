@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import { useSession } from '../lib/SessionContext.jsx'
 import { Card, Input, Button } from '../design-kit.tsx'
 import FoodSearchInput from './FoodSearchInput.jsx'
 import { recipeTotals } from '../lib/macroMath.js'
@@ -14,6 +15,7 @@ function newRow() {
 }
 
 export default function QuickAddRecipe({ onLogged }) {
+  const session = useSession()
   const [query, setQuery] = useState('')
   const [suggestions, setSuggestions] = useState([])
   const [selectedRecipe, setSelectedRecipe] = useState(null)
@@ -36,11 +38,13 @@ export default function QuickAddRecipe({ onLogged }) {
       setSuggestions([])
       return
     }
+    if (!session) return
     let cancelled = false
     const timer = setTimeout(async () => {
       const { data, error } = await supabase
         .from('recipes')
         .select('*')
+        .eq('user_id', session.user.id)
         .ilike('name', `%${query.trim()}%`)
         .limit(5)
       if (cancelled) return
@@ -50,7 +54,7 @@ export default function QuickAddRecipe({ onLogged }) {
       cancelled = true
       clearTimeout(timer)
     }
-  }, [query])
+  }, [query, session])
 
   function pickRecipe(recipe) {
     skipNextSearch.current = true
@@ -94,7 +98,7 @@ export default function QuickAddRecipe({ onLogged }) {
     setError(null)
     const { error } = await supabase
       .from('logs')
-      .insert({ recipe_id: selectedRecipe.id, grams: g, date: todayDate() })
+      .insert({ user_id: session.user.id, recipe_id: selectedRecipe.id, grams: g, date: todayDate() })
     setSaving(false)
     if (error) {
       setError(error.message)
@@ -111,7 +115,7 @@ export default function QuickAddRecipe({ onLogged }) {
 
     const { data: recipeRows, error: recipeError } = await supabase
       .from('recipes')
-      .insert({ name: query.trim(), total_grams: totalGrams })
+      .insert({ user_id: session.user.id, name: query.trim(), total_grams: totalGrams })
       .select()
     if (recipeError) {
       setSaving(false)
@@ -133,7 +137,7 @@ export default function QuickAddRecipe({ onLogged }) {
     if (g > 0) {
       const { error: logError } = await supabase
         .from('logs')
-        .insert({ recipe_id: recipe.id, grams: g, date: todayDate() })
+        .insert({ user_id: session.user.id, recipe_id: recipe.id, grams: g, date: todayDate() })
       if (logError) {
         setSaving(false)
         setError(logError.message)
