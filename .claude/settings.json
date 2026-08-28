@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s http://localhost:*)",
+      "Bash(nslookup *)",
+      "Bash(python3 .claude/skills/ui-ux-pro-max/scripts/search.py *)"
+    ]
+  }
+}
