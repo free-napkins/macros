@@ -68,7 +68,13 @@ export default function AskMode({ session, onLogged }) {
     if (last?.proposal) {
       history = [...history.slice(0, -1), { role: 'assistant', text: summarizeProposal(last.proposal) }]
     }
-    const withUser = [...history, { role: 'user', text }]
+    // If the previous send() errored out, its user turn is still sitting
+    // there unanswered — the API rejects two consecutive user turns, so
+    // merge into it instead of appending a separate one.
+    const withUser =
+      history.length && history[history.length - 1].role === 'user'
+        ? [...history.slice(0, -1), { role: 'user', text: `${history[history.length - 1].text}\n${text}` }]
+        : [...history, { role: 'user', text }]
     setMessages(withUser)
     setInput('')
     setEditFields(null)
@@ -278,6 +284,7 @@ export default function AskMode({ session, onLogged }) {
                 background: m.role === 'user' ? 'var(--accent)' : 'var(--card)',
                 color: m.role === 'user' ? 'var(--on-accent)' : 'var(--fg)',
                 fontSize: 'var(--text-sm)',
+                whiteSpace: 'pre-wrap',
               }}
             >
               {m.text}
@@ -285,15 +292,6 @@ export default function AskMode({ session, onLogged }) {
           )
         })}
         {sending && <div style={{ fontSize: 'var(--text-xs)', color: 'var(--muted)' }}>Thinking…</div>}
-      </div>
-
-      <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-        <Button variant="ghost" onClick={() => send('Log this once')} disabled={sending}>
-          Log this once
-        </Button>
-        <Button variant="ghost" onClick={() => send('Add this to my food database')} disabled={sending}>
-          Add to my food database
-        </Button>
       </div>
 
       <div style={{ display: 'flex', gap: 'var(--space-3)' }}>

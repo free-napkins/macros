@@ -82,7 +82,7 @@ export async function callAnthropicChat({ apiKey, system, tools, messages }) {
     },
     body: JSON.stringify({
       model: 'claude-sonnet-5',
-      max_tokens: 1024,
+      max_tokens: 2048,
       system,
       tools,
       tool_choice: { type: 'auto' },
@@ -96,5 +96,8 @@ export async function callAnthropicChat({ apiKey, system, tools, messages }) {
   }
 
   const data = await response.json()
+  if (data.stop_reason === 'max_tokens') {
+    throw new Error('Response was cut off before finishing — try a shorter message or fewer details at once.')
+  }
   return data.content || []
 }
