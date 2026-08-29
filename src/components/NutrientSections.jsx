@@ -4,9 +4,28 @@ import { statusForPercent, STATUS_COLORS } from '../lib/macroCalc.js'
 // Already shown as the 4 big bars elsewhere — skip here to avoid duplication.
 const SKIP_KEYS = new Set(['core:calories', 'core:protein_g', 'core:carbs_g', 'core:fat_g'])
 
+const KNOWN_MICRO_KEYS = new Set(NUTRIENT_DEFS.filter((d) => !d.key.startsWith('core:')).map((d) => d.key))
+
 function fmt(value) {
   const rounded = Math.round(value * 100) / 100
   return rounded % 1 === 0 ? rounded : Math.round(value * 10) / 10
+}
+
+// A scanned label (especially supplements) can list ingredients with
+// no entry in the curated NUTRIENT_DEFS catalog — proprietary blends,
+// herbal extracts, etc. Rather than silently dropping them, turn the
+// raw key into a synthetic def ("ashwagandha_mg" -> "Ashwagandha", mg)
+// so they still render, just without an established daily target.
+function humanizeMicroKey(key) {
+  const unitMatch = key.match(/_(mcg|mg|g)$/)
+  const unit = unitMatch ? unitMatch[1] : ''
+  const base = unit ? key.slice(0, -(unit.length + 1)) : key
+  const label = base
+    .split('_')
+    .filter(Boolean)
+    .map((w) => w[0].toUpperCase() + w.slice(1))
+    .join(' ')
+  return { key, label: label || key, unit, section: 'Other', target: null }
 }
 
 // mode "targets": totals vs a computed daily target (bar + %), for nutrients
@@ -18,8 +37,12 @@ function fmt(value) {
 export default function NutrientSections({ totals, mode = 'targets', sexWeight, hideZero = mode === 'values' }) {
   const defs = NUTRIENT_DEFS.filter((d) => !SKIP_KEYS.has(d.key))
 
-  const sectionsWithRows = SECTIONS.map((section) => {
-    let rows = defs.filter((d) => d.section === section)
+  const otherDefs = Object.keys(totals.micronutrients || {})
+    .filter((key) => !KNOWN_MICRO_KEYS.has(key))
+    .map(humanizeMicroKey)
+
+  const sectionsWithRows = [...SECTIONS, 'Other'].map((section) => {
+    let rows = section === 'Other' ? otherDefs : defs.filter((d) => d.section === section)
     if (hideZero) rows = rows.filter((d) => readNutrientValue(d, totals) !== 0)
     return { section, rows }
   }).filter(({ rows }) => rows.length > 0)

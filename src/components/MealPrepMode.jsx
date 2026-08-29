@@ -1,24 +1,21 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { Input, Button } from '../design-kit.tsx'
+import FoodSearchInput from './FoodSearchInput.jsx'
+import { recipeTotals } from '../lib/macroMath.js'
 
 function todayDate() {
   return new Date().toISOString().slice(0, 10)
 }
 
-function emptyBatch() {
-  return {
-    name: '',
-    dateMade: todayDate(),
-    servingGrams: '',
-    totalServings: '',
-    calories: '',
-    protein_g: '',
-    carbs_g: '',
-    fat_g: '',
-  }
+let rowKey = 0
+function newRow() {
+  return { key: rowKey++, food: null, grams: '' }
 }
-const emptyExtra = { fiber_g: '', sugar_g: '', sodium_mg: '' }
+
+function emptyBatchInfo() {
+  return { name: '', dateMade: todayDate(), totalServings: '' }
+}
 
 export default function MealPrepMode({ session, onLogged }) {
   const [batches, setBatches] = useState(null)
@@ -26,9 +23,8 @@ export default function MealPrepMode({ session, onLogged }) {
   const [logging, setLogging] = useState(null)
   const [error, setError] = useState(null)
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState(emptyBatch)
-  const [extra, setExtra] = useState(emptyExtra)
-  const [showExtra, setShowExtra] = useState(false)
+  const [info, setInfo] = useState(emptyBatchInfo)
+  const [rows, setRows] = useState([newRow()])
   const [saving, setSaving] = useState(false)
 
   async function load() {
@@ -51,40 +47,49 @@ export default function MealPrepMode({ session, onLogged }) {
   }, [session])
 
   function resetForm() {
-    setForm(emptyBatch())
-    setExtra(emptyExtra)
-    setShowExtra(false)
+    setInfo(emptyBatchInfo())
+    setRows([newRow()])
     setShowForm(false)
   }
 
-  const canCreate =
-    form.name.trim() &&
-    parseFloat(form.servingGrams) > 0 &&
-    parseFloat(form.totalServings) > 0 &&
-    parseFloat(form.calories) >= 0
+  function updateRow(key, patch) {
+    setRows((rs) => rs.map((r) => (r.key === key ? { ...r, ...patch } : r)))
+  }
+
+  function removeRow(key) {
+    setRows((rs) => (rs.length > 1 ? rs.filter((r) => r.key !== key) : rs))
+  }
+
+  const validRows = rows.filter((r) => r.food && parseFloat(r.grams) > 0)
+  const totalGrams = validRows.reduce((sum, r) => sum + parseFloat(r.grams), 0)
+  const portions = parseFloat(info.totalServings)
+
+  const previewTotals =
+    validRows.length > 0
+      ? recipeTotals({ recipe_ingredients: validRows.map((r) => ({ foods: r.food, grams: parseFloat(r.grams) })) })
+      : null
+
+  const canCreate = info.name.trim() && validRows.length > 0 && portions > 0
 
   async function createBatch() {
     if (!canCreate) return
     setSaving(true)
     setError(null)
 
-    const servingGrams = parseFloat(form.servingGrams)
-    const totalServings = parseFloat(form.totalServings)
-    const scale = 100 / servingGrams
-
+    const scale = 100 / totalGrams
     const { data: foodRows, error: foodError } = await supabase
       .from('foods')
       .insert({
-        name: form.name.trim(),
+        name: info.name.trim(),
         source: 'meal_prep',
         is_permanent: false,
-        calories: (parseFloat(form.calories) || 0) * scale,
-        protein_g: (parseFloat(form.protein_g) || 0) * scale,
-        carbs_g: (parseFloat(form.carbs_g) || 0) * scale,
-        fat_g: (parseFloat(form.fat_g) || 0) * scale,
-        fiber_g: (parseFloat(extra.fiber_g) || 0) * scale,
-        sugar_g: (parseFloat(extra.sugar_g) || 0) * scale,
-        sodium_mg: (parseFloat(extra.sodium_mg) || 0) * scale,
+        calories: previewTotals.calories * scale,
+        protein_g: previewTotals.protein_g * scale,
+        carbs_g: previewTotals.carbs_g * scale,
+        fat_g: previewTotals.fat_g * scale,
+        fiber_g: previewTotals.fiber_g * scale,
+        sugar_g: previewTotals.sugar_g * scale,
+        sodium_mg: previewTotals.sodium_mg * scale,
       })
       .select()
     if (foodError) {
@@ -96,11 +101,11 @@ export default function MealPrepMode({ session, onLogged }) {
     const { error: batchError } = await supabase.from('meal_preps').insert({
       user_id: session.user.id,
       food_id: foodRows[0].id,
-      name: form.name.trim(),
-      date_made: form.dateMade,
-      serving_grams: servingGrams,
-      total_servings: totalServings,
-      remaining_servings: totalServings,
+      name: info.name.trim(),
+      date_made: info.dateMade,
+      serving_grams: totalGrams / portions,
+      total_servings: portions,
+      remaining_servings: portions,
     })
     setSaving(false)
     if (batchError) {
@@ -159,6 +164,7 @@ export default function MealPrepMode({ session, onLogged }) {
               key={batch.id}
               style={{
                 display: 'flex',
+                flexWrap: 'wrap',
                 alignItems: 'flex-end',
                 gap: 'var(--space-3)',
                 padding: 'var(--space-3)',
@@ -166,7 +172,7 @@ export default function MealPrepMode({ session, onLogged }) {
                 borderRadius: 'var(--radius-sm)',
               }}
             >
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: '1 1 160px' }}>
                 <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500 }}>{batch.name}</div>
                 <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)', color: 'var(--muted)' }}>
                   {batch.remaining_servings}/{batch.total_servings} left · made {batch.date_made}
@@ -199,101 +205,74 @@ export default function MealPrepMode({ session, onLogged }) {
 
       {showForm && (
         <>
-          <Input
-            label="Batch name"
-            name="mealprep-name"
-            placeholder="e.g. chicken & rice meal prep"
-            value={form.name}
-            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-          />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 'var(--space-3)' }}>
             <Input
-              label="Weight per serving (g)"
-              name="mealprep-serving-grams"
-              type="number"
-              min="0"
-              value={form.servingGrams}
-              onChange={(e) => setForm((f) => ({ ...f, servingGrams: e.target.value }))}
+              label="Batch name"
+              name="mealprep-name"
+              placeholder="e.g. chicken & rice meal prep"
+              value={info.name}
+              onChange={(e) => setInfo((f) => ({ ...f, name: e.target.value }))}
             />
             <Input
-              label="Number of servings"
+              label="Number of portions"
               name="mealprep-total-servings"
               type="number"
               min="0"
-              value={form.totalServings}
-              onChange={(e) => setForm((f) => ({ ...f, totalServings: e.target.value }))}
+              value={info.totalServings}
+              onChange={(e) => setInfo((f) => ({ ...f, totalServings: e.target.value }))}
             />
             <Input
               label="Date made"
               name="mealprep-date"
               type="date"
-              value={form.dateMade}
-              onChange={(e) => setForm((f) => ({ ...f, dateMade: e.target.value }))}
+              value={info.dateMade}
+              onChange={(e) => setInfo((f) => ({ ...f, dateMade: e.target.value }))}
             />
           </div>
 
-          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)', color: 'var(--muted)' }}>
-            Macros per serving:
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
-            <Input
-              label="Calories"
-              name="mealprep-calories"
-              type="number"
-              value={form.calories}
-              onChange={(e) => setForm((f) => ({ ...f, calories: e.target.value }))}
-            />
-            <Input
-              label="Protein g"
-              name="mealprep-protein"
-              type="number"
-              value={form.protein_g}
-              onChange={(e) => setForm((f) => ({ ...f, protein_g: e.target.value }))}
-            />
-            <Input
-              label="Carbs g"
-              name="mealprep-carbs"
-              type="number"
-              value={form.carbs_g}
-              onChange={(e) => setForm((f) => ({ ...f, carbs_g: e.target.value }))}
-            />
-            <Input
-              label="Fat g"
-              name="mealprep-fat"
-              type="number"
-              value={form.fat_g}
-              onChange={(e) => setForm((f) => ({ ...f, fat_g: e.target.value }))}
-            />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+            {rows.map((row) => (
+              <div key={row.key} style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)', alignItems: 'flex-start' }}>
+                <div style={{ flex: '2 1 200px' }}>
+                  <FoodSearchInput
+                    name={`mealprep-food-${row.key}`}
+                    placeholder="Ingredient in this batch"
+                    onSelect={(food) => updateRow(row.key, { food })}
+                  />
+                </div>
+                <div style={{ flex: '1 1 100px' }}>
+                  <Input
+                    name={`mealprep-grams-${row.key}`}
+                    type="number"
+                    min="0"
+                    placeholder="Grams"
+                    value={row.grams}
+                    onChange={(e) => updateRow(row.key, { grams: e.target.value })}
+                  />
+                </div>
+                <Button variant="ghost" onClick={() => removeRow(row.key)} aria-label="Remove ingredient">
+                  ×
+                </Button>
+              </div>
+            ))}
           </div>
 
-          {!showExtra && (
-            <Button variant="ghost" onClick={() => setShowExtra(true)}>
-              + More nutrients (optional)
-            </Button>
-          )}
-          {showExtra && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--space-3)' }}>
-              <Input
-                label="Fiber g"
-                name="mealprep-fiber"
-                type="number"
-                value={extra.fiber_g}
-                onChange={(e) => setExtra((f) => ({ ...f, fiber_g: e.target.value }))}
-              />
-              <Input
-                label="Sugar g"
-                name="mealprep-sugar"
-                type="number"
-                value={extra.sugar_g}
-                onChange={(e) => setExtra((f) => ({ ...f, sugar_g: e.target.value }))}
-              />
-              <Input
-                label="Sodium mg"
-                name="mealprep-sodium"
-                type="number"
-                value={extra.sodium_mg}
-                onChange={(e) => setExtra((f) => ({ ...f, sodium_mg: e.target.value }))}
-              />
+          <Button variant="ghost" onClick={() => setRows((rs) => [...rs, newRow()])}>
+            + Add ingredient
+          </Button>
+
+          {previewTotals && (
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)', color: 'var(--muted)' }}>
+              Batch total {totalGrams}g · {Math.round(previewTotals.calories)} cal · {Math.round(previewTotals.protein_g)}g
+              protein · {Math.round(previewTotals.carbs_g)}g carbs · {Math.round(previewTotals.fat_g)}g fat
+              {portions > 0 && (
+                <>
+                  <br />
+                  Per portion ({Math.round(totalGrams / portions)}g): {Math.round(previewTotals.calories / portions)} cal ·{' '}
+                  {Math.round(previewTotals.protein_g / portions)}g protein · {Math.round(previewTotals.carbs_g / portions)}g
+                  carbs · {Math.round(previewTotals.fat_g / portions)}g fat
+                </>
+              )}
             </div>
           )}
 

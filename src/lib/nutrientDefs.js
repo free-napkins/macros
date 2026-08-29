@@ -79,6 +79,8 @@ export const NUTRIENT_DEFS = [
   { key: 'vitamin_d_mcg', label: 'Vitamin D', unit: 'mcg', section: 'Vitamins', target: { type: 'rda', male: 15, female: 15 } },
   { key: 'vitamin_e_mg', label: 'Vitamin E', unit: 'mg', section: 'Vitamins', target: { type: 'rda', male: 15, female: 15 } },
   { key: 'vitamin_k_mcg', label: 'Vitamin K', unit: 'mcg', section: 'Vitamins', target: { type: 'rda', male: 120, female: 90 } },
+  { key: 'biotin_mcg', label: 'Biotin', unit: 'mcg', section: 'Vitamins', target: { type: 'rda', male: 30, female: 30 } },
+  { key: 'choline_mg', label: 'Choline', unit: 'mg', section: 'Vitamins', target: { type: 'rda', male: 550, female: 425 } },
 
   // ---------------- Minerals ----------------
   { key: 'calcium_mg', label: 'Calcium', unit: 'mg', section: 'Minerals', target: { type: 'rda', male: 1000, female: 1000 } },
@@ -91,6 +93,10 @@ export const NUTRIENT_DEFS = [
   { key: 'selenium_mcg', label: 'Selenium', unit: 'mcg', section: 'Minerals', target: { type: 'rda', male: 55, female: 55 } },
   { key: 'core:sodium_mg', label: 'Sodium', unit: 'mg', section: 'Minerals', target: { type: 'upper-limit', value: 2300 } },
   { key: 'zinc_mg', label: 'Zinc', unit: 'mg', section: 'Minerals', target: { type: 'rda', male: 11, female: 8 } },
+  { key: 'chromium_mcg', label: 'Chromium', unit: 'mcg', section: 'Minerals', target: { type: 'rda', male: 35, female: 25 } },
+  { key: 'molybdenum_mcg', label: 'Molybdenum', unit: 'mcg', section: 'Minerals', target: { type: 'rda', male: 45, female: 45 } },
+  { key: 'iodine_mcg', label: 'Iodine', unit: 'mcg', section: 'Minerals', target: { type: 'rda', male: 150, female: 150 } },
+  { key: 'boron_mg', label: 'Boron', unit: 'mg', section: 'Minerals', target: null },
 ]
 
 export function computeTarget(def, { sex, weightKg }) {

@@ -190,7 +190,7 @@ function SearchMode({ session, onLogged }) {
 
       {canAddNew && showNewForm && (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 'var(--space-3)' }}>
             <Input
               label="Calories / 100g"
               name="calories"
@@ -221,7 +221,7 @@ function SearchMode({ session, onLogged }) {
             />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 'var(--space-3)' }}>
             <Input
               label="Group under product (optional)"
               name="product-name"
@@ -244,7 +244,7 @@ function SearchMode({ session, onLogged }) {
             </Button>
           )}
           {showNewExtra && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--space-3)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 'var(--space-3)' }}>
               <Input
                 label="Fiber g / 100g"
                 name="fiber_g"

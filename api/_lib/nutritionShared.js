@@ -1,12 +1,14 @@
 import { createClient } from '@supabase/supabase-js'
 
 export const MICRO_KEY_HINT =
-  'Use these exact keys where known (per 100g): vitamin_a_mcg, vitamin_c_mg, vitamin_d_mcg, ' +
+  'Use these exact keys where known (per 100g, or per dose for supplements): vitamin_a_mcg, vitamin_c_mg, vitamin_d_mcg, ' +
   'vitamin_e_mg, vitamin_k_mcg, vitamin_b1_mg, vitamin_b2_mg, vitamin_b3_mg, vitamin_b5_mg, vitamin_b6_mg, ' +
   'vitamin_b12_mcg, folate_mcg, calcium_mg, iron_mg, magnesium_mg, phosphorus_mg, potassium_mg, zinc_mg, ' +
   'copper_mg, manganese_mg, selenium_mcg, saturated_g, monounsaturated_g, polyunsaturated_g, trans_fat_g, ' +
   'cholesterol_mg, omega3_g, omega6_g, alcohol_g, caffeine_mg, water_g, starch_g, ' +
-  'insoluble_fiber_g, soluble_fiber_g.'
+  'insoluble_fiber_g, soluble_fiber_g, biotin_mcg, chromium_mcg, molybdenum_mcg, iodine_mcg, choline_mg, boron_mg. ' +
+  'For anything not in this list (proprietary blends, herbal extracts, amino acids, etc.), invent a short ' +
+  'descriptive snake_case key instead of dropping it, e.g. ashwagandha_mg, milk_thistle_extract_mg.'
 
 // Verifies the caller holds a valid Supabase session before any route
 // spends the shared ANTHROPIC_API_KEY. Writes a 401 and returns null

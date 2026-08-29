@@ -10,7 +10,7 @@ export default function NutrientFieldsGrid({ fields, onChange, namePrefix }) {
     <>
       <Input label="Name" name={`${namePrefix}-name`} value={fields.name} onChange={(e) => onChange('name', e.target.value)} />
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 'var(--space-3)' }}>
         <Input
           label="Group under product (optional)"
           name={`${namePrefix}-product-name`}
@@ -27,7 +27,7 @@ export default function NutrientFieldsGrid({ fields, onChange, namePrefix }) {
         />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 'var(--space-3)' }}>
         <Input
           label="Calories / 100g"
           name={`${namePrefix}-calories`}

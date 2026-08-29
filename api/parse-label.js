@@ -34,12 +34,15 @@ const SUPPLEMENT_TOOL = {
     properties: {
       name: { type: 'string', description: 'Supplement name if visible, else a short descriptive name' },
       dose_label: { type: 'string', description: 'Serving size as printed, e.g. "1 tablet" or "2 capsules"' },
+      servings_per_container: { type: 'number', description: 'Number of servings per container, e.g. 60 from "Servings Per Container: 60"' },
       nutrients: {
         type: 'object',
         description:
-          'Nutrients per serving as key/value pairs, e.g. {"vitamin_d_mcg": 25, "zinc_mg": 15}. ' +
+          'Every nutrient/ingredient listed on the supplement facts panel, per serving, as key/value pairs, ' +
+          'e.g. {"vitamin_d_mcg": 25, "zinc_mg": 15}. Capture ALL of them, not just the common ones — including ' +
+          'proprietary blend components and anything else printed, however minor. ' +
           'Map label names to these keys regardless of exact wording (e.g. "Vitamin D3" or "Cholecalciferol" -> vitamin_d_mcg, "Cobalamin"/"Methylcobalamin" -> vitamin_b12_mcg). ' +
-          MICRO_KEY_HINT + ' Only include keys actually printed on the label.',
+          MICRO_KEY_HINT + ' Only include items actually printed on the label — do not guess values that aren\'t stated.',
         additionalProperties: { type: 'number' },
       },
     },
@@ -72,7 +75,7 @@ export default async function handler(req, res) {
   const instruction =
     kind === 'food'
       ? "Read the nutrition facts label in this photo. Normalize all values to per-100g (if the label states per-serving values and a serving size in grams, convert; if serving size isn't in grams, make a reasonable estimate from typical serving sizes). Call extract_nutrition with the result."
-      : "Read the supplement facts label in this photo. Report nutrient amounts per the label's stated serving/dose — do not normalize to 100g. Call extract_nutrition with the result."
+      : "Read the supplement facts label in this photo thoroughly — capture every nutrient, mineral, and blend ingredient listed, not just the well-known ones, and the servings-per-container count if printed. Report nutrient amounts per the label's stated serving/dose — do not normalize to 100g. Call extract_nutrition with the result."
 
   try {
     const result = await callAnthropicTool({

@@ -9,18 +9,42 @@ function todayDate() {
   return new Date().toISOString().slice(0, 10)
 }
 
+function lerpColor(hexA, hexB, t) {
+  t = Math.max(0, Math.min(1, t))
+  const a = parseInt(hexA.slice(1), 16)
+  const b = parseInt(hexB.slice(1), 16)
+  const r = Math.round(((a >> 16) & 255) + ((((b >> 16) & 255) - ((a >> 16) & 255)) * t))
+  const g = Math.round(((a >> 8) & 255) + ((((b >> 8) & 255) - ((a >> 8) & 255)) * t))
+  const bl = Math.round((a & 255) + (((b & 255) - (a & 255)) * t))
+  return `rgb(${r}, ${g}, ${bl})`
+}
+
+// null when there isn't enough data (no remaining count set, or no
+// dosing frequency) to project anything.
+function computeRunOut(s) {
+  if (s.remaining_servings == null || !s.doses_per_day || s.doses_per_day <= 0) return null
+  const daysLeft = s.remaining_servings / s.doses_per_day
+  const runOutDate = new Date()
+  runOutDate.setDate(runOutDate.getDate() + Math.floor(daysLeft))
+  const color = lerpColor('#EF4444', '#3CFF9E', daysLeft / 30) // red at 0 days, green at 30+
+  return { daysLeft, runOutDate: runOutDate.toISOString().slice(0, 10), color }
+}
+
+const emptyNew = { name: '', dose: '', servingsPerContainer: '', dosesPerDay: '1' }
+
 export default function SupplementChecklist() {
   const session = useSession()
   const [supplements, setSupplements] = useState(null)
   const [logsBySupplement, setLogsBySupplement] = useState({})
   const [error, setError] = useState(null)
   const [showAddForm, setShowAddForm] = useState(false)
-  const [newName, setNewName] = useState('')
-  const [newDose, setNewDose] = useState('')
+  const [newForm, setNewForm] = useState(emptyNew)
   const [newNutrients, setNewNutrients] = useState({})
   const [saving, setSaving] = useState(false)
   const [parsing, setParsing] = useState(false)
   const [expandedId, setExpandedId] = useState(null)
+  const [editingId, setEditingId] = useState(null)
+  const [editForm, setEditForm] = useState(null)
 
   async function load() {
     if (!session) return
@@ -67,22 +91,44 @@ export default function SupplementChecklist() {
       return
     }
     setLogsBySupplement((m) => ({ ...m, [supplement.id]: data[0] }))
+
+    // Inventory bookkeeping happens after the taken-state is confirmed
+    // saved, so a failure here only leaves the count stale (fixable via
+    // Edit) rather than risking the reverse: the count silently
+    // drifting while the checklist shows nothing happened.
+    if (supplement.remaining_servings != null) {
+      const delta = nextTaken ? -supplement.doses_per_day : supplement.doses_per_day
+      const { data: updated, error: updateError } = await supabase
+        .from('supplements')
+        .update({ remaining_servings: supplement.remaining_servings + delta })
+        .eq('id', supplement.id)
+        .select()
+      if (!updateError && updated) {
+        setSupplements((list) => list.map((x) => (x.id === supplement.id ? updated[0] : x)))
+      }
+    }
   }
 
   async function addSupplement() {
-    if (!newName.trim()) return
+    if (!newForm.name.trim()) return
     setSaving(true)
     setError(null)
-    const { error } = await supabase
-      .from('supplements')
-      .insert({ user_id: session.user.id, name: newName.trim(), dose_label: newDose.trim() || null, nutrients: newNutrients })
+    const servingsPerContainer = newForm.servingsPerContainer ? parseFloat(newForm.servingsPerContainer) : null
+    const { error } = await supabase.from('supplements').insert({
+      user_id: session.user.id,
+      name: newForm.name.trim(),
+      dose_label: newForm.dose.trim() || null,
+      nutrients: newNutrients,
+      servings_per_container: servingsPerContainer,
+      remaining_servings: servingsPerContainer,
+      doses_per_day: parseFloat(newForm.dosesPerDay) || 1,
+    })
     setSaving(false)
     if (error) {
       setError(error.message)
       return
     }
-    setNewName('')
-    setNewDose('')
+    setNewForm(emptyNew)
     setNewNutrients({})
     setShowAddForm(false)
     load()
@@ -96,14 +142,65 @@ export default function SupplementChecklist() {
     setError(null)
     try {
       const result = await scanLabel(file, 'supplement')
-      setNewName(result.name || '')
-      setNewDose(result.dose_label || '')
+      setNewForm((f) => ({
+        ...f,
+        name: result.name || '',
+        dose: result.dose_label || '',
+        servingsPerContainer: result.servings_per_container ? String(result.servings_per_container) : '',
+      }))
       setNewNutrients(result.nutrients || {})
     } catch (err) {
       setError(err.message)
     } finally {
       setParsing(false)
     }
+  }
+
+  function startEdit(s) {
+    setExpandedId(null)
+    setEditingId(s.id)
+    setEditForm({
+      name: s.name,
+      dose: s.dose_label || '',
+      servingsPerContainer: s.servings_per_container ?? '',
+      remainingServings: s.remaining_servings ?? '',
+      dosesPerDay: String(s.doses_per_day ?? 1),
+    })
+  }
+
+  async function saveEdit(id) {
+    setSaving(true)
+    setError(null)
+    const { data, error } = await supabase
+      .from('supplements')
+      .update({
+        name: editForm.name.trim(),
+        dose_label: editForm.dose.trim() || null,
+        servings_per_container: editForm.servingsPerContainer !== '' ? parseFloat(editForm.servingsPerContainer) : null,
+        remaining_servings: editForm.remainingServings !== '' ? parseFloat(editForm.remainingServings) : null,
+        doses_per_day: parseFloat(editForm.dosesPerDay) || 1,
+      })
+      .eq('id', id)
+      .select()
+    setSaving(false)
+    if (error) {
+      setError(error.message)
+      return
+    }
+    setSupplements((list) => list.map((x) => (x.id === id ? data[0] : x)))
+    setEditingId(null)
+    setEditForm(null)
+  }
+
+  async function deleteSupplement(s) {
+    if (!window.confirm(`Delete "${s.name}"? This also removes its taken-history.`)) return
+    setError(null)
+    const { error } = await supabase.from('supplements').delete().eq('id', s.id)
+    if (error) {
+      setError(error.message)
+      return
+    }
+    setSupplements((list) => list.filter((x) => x.id !== s.id))
   }
 
   if (error) {
@@ -132,7 +229,54 @@ export default function SupplementChecklist() {
         {supplements.map((s) => {
           const taken = logsBySupplement[s.id]?.taken ?? false
           const expanded = expandedId === s.id
+          const editing = editingId === s.id
           const nutrientCount = Object.keys(s.nutrients || {}).length
+          const runOut = computeRunOut(s)
+
+          if (editing) {
+            return (
+              <div key={s.id} style={{ borderBottom: '1px solid var(--border)', paddingBottom: 'var(--space-3)', display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+                <Input label="Name" name={`edit-name-${s.id}`} value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} />
+                <Input label="Dose" name={`edit-dose-${s.id}`} value={editForm.dose} onChange={(e) => setEditForm((f) => ({ ...f, dose: e.target.value }))} />
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 'var(--space-3)' }}>
+                  <Input
+                    label="Servings per container"
+                    name={`edit-spc-${s.id}`}
+                    type="number"
+                    min="0"
+                    value={editForm.servingsPerContainer}
+                    onChange={(e) => setEditForm((f) => ({ ...f, servingsPerContainer: e.target.value }))}
+                  />
+                  <Input
+                    label="Remaining servings"
+                    name={`edit-remaining-${s.id}`}
+                    type="number"
+                    min="0"
+                    value={editForm.remainingServings}
+                    onChange={(e) => setEditForm((f) => ({ ...f, remainingServings: e.target.value }))}
+                  />
+                  <Input
+                    label="Doses per day"
+                    name={`edit-frequency-${s.id}`}
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    value={editForm.dosesPerDay}
+                    onChange={(e) => setEditForm((f) => ({ ...f, dosesPerDay: e.target.value }))}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
+                  <Button onClick={() => saveEdit(s.id)} disabled={saving || !editForm.name.trim()}>
+                    Save
+                  </Button>
+                  <Button variant="ghost" onClick={() => { setEditingId(null); setEditForm(null) }} disabled={saving}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )
+          }
+
           return (
             <div key={s.id} style={{ borderBottom: '1px solid var(--border)', paddingBottom: 'var(--space-3)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
@@ -166,6 +310,13 @@ export default function SupplementChecklist() {
                 </button>
               </div>
 
+              {(s.remaining_servings != null || runOut) && (
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)', marginTop: '4px', color: runOut ? runOut.color : 'var(--muted)' }}>
+                  {s.remaining_servings != null && `${s.remaining_servings}${s.servings_per_container ? `/${s.servings_per_container}` : ''} left`}
+                  {runOut && ` · runs out ~${runOut.runOutDate}`}
+                </div>
+              )}
+
               {expanded && nutrientCount > 0 && (
                 <div
                   style={{
@@ -181,6 +332,15 @@ export default function SupplementChecklist() {
                   />
                 </div>
               )}
+
+              <div style={{ display: 'flex', gap: 'var(--space-3)', marginTop: '4px' }}>
+                <Button variant="link" onClick={() => startEdit(s)}>
+                  Edit
+                </Button>
+                <Button variant="link" onClick={() => deleteSupplement(s)}>
+                  Delete
+                </Button>
+              </div>
             </div>
           )
         })}
@@ -207,20 +367,40 @@ export default function SupplementChecklist() {
                 style={{ display: 'none' }}
               />
             </label>
-            <Input label="Name" name="supplement-name" value={newName} onChange={(e) => setNewName(e.target.value)} />
+            <Input label="Name" name="supplement-name" value={newForm.name} onChange={(e) => setNewForm((f) => ({ ...f, name: e.target.value }))} />
             <Input
               label="Dose (optional)"
               name="supplement-dose"
               placeholder="e.g. 2 capsules"
-              value={newDose}
-              onChange={(e) => setNewDose(e.target.value)}
+              value={newForm.dose}
+              onChange={(e) => setNewForm((f) => ({ ...f, dose: e.target.value }))}
             />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 'var(--space-3)' }}>
+              <Input
+                label="Servings per container"
+                name="supplement-servings-per-container"
+                type="number"
+                min="0"
+                placeholder="e.g. 60"
+                value={newForm.servingsPerContainer}
+                onChange={(e) => setNewForm((f) => ({ ...f, servingsPerContainer: e.target.value }))}
+              />
+              <Input
+                label="Doses per day"
+                name="supplement-doses-per-day"
+                type="number"
+                min="0"
+                step="0.5"
+                value={newForm.dosesPerDay}
+                onChange={(e) => setNewForm((f) => ({ ...f, dosesPerDay: e.target.value }))}
+              />
+            </div>
             {Object.keys(newNutrients).length > 0 && (
               <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)', color: 'var(--muted)' }}>
                 + {Object.keys(newNutrients).length} nutrient{Object.keys(newNutrients).length === 1 ? '' : 's'} detected
               </div>
             )}
-            <Button onClick={addSupplement} disabled={saving || !newName.trim()}>
+            <Button onClick={addSupplement} disabled={saving || !newForm.name.trim()}>
               Save
             </Button>
           </div>
