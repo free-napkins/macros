@@ -4,6 +4,7 @@ import { useSession } from '../lib/SessionContext.jsx'
 import { scanLabel } from '../lib/scanLabel.js'
 import FoodSearchInput from './FoodSearchInput.jsx'
 import NutrientSections from './NutrientSections.jsx'
+import NutrientFieldsGrid from './NutrientFieldsGrid.jsx'
 import { Card, Input, Button } from '../design-kit.tsx'
 
 function todayDate() {
@@ -383,8 +384,6 @@ function ScanMode({ session, onLogged }) {
     onLogged?.()
   }
 
-  const microCount = fields ? Object.keys(fields.micronutrients || {}).length : 0
-
   return (
     <>
       {!fields && (
@@ -403,89 +402,7 @@ function ScanMode({ session, onLogged }) {
 
       {fields && (
         <>
-          <Input label="Name" name="label-name" value={fields.name} onChange={(e) => updateField('name', e.target.value)} />
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
-            <Input
-              label="Group under product (optional)"
-              name="label-product-name"
-              placeholder="e.g. Kit Kat"
-              value={fields.product_name}
-              onChange={(e) => updateField('product_name', e.target.value)}
-            />
-            <Input
-              label="Variant / size (optional)"
-              name="label-variant-label"
-              placeholder="e.g. King Size"
-              value={fields.variant_label}
-              onChange={(e) => updateField('variant_label', e.target.value)}
-            />
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
-            <Input
-              label="Calories / 100g"
-              name="label-calories"
-              type="number"
-              value={fields.calories}
-              onChange={(e) => updateField('calories', e.target.value)}
-            />
-            <Input
-              label="Protein g / 100g"
-              name="label-protein"
-              type="number"
-              value={fields.protein_g}
-              onChange={(e) => updateField('protein_g', e.target.value)}
-            />
-            <Input
-              label="Carbs g / 100g"
-              name="label-carbs"
-              type="number"
-              value={fields.carbs_g}
-              onChange={(e) => updateField('carbs_g', e.target.value)}
-            />
-            <Input
-              label="Fat g / 100g"
-              name="label-fat"
-              type="number"
-              value={fields.fat_g}
-              onChange={(e) => updateField('fat_g', e.target.value)}
-            />
-            <Input
-              label="Fiber g / 100g"
-              name="label-fiber"
-              type="number"
-              value={fields.fiber_g}
-              onChange={(e) => updateField('fiber_g', e.target.value)}
-            />
-            <Input
-              label="Sugar g / 100g"
-              name="label-sugar"
-              type="number"
-              value={fields.sugar_g}
-              onChange={(e) => updateField('sugar_g', e.target.value)}
-            />
-            <Input
-              label="Sodium mg / 100g"
-              name="label-sodium"
-              type="number"
-              value={fields.sodium_mg}
-              onChange={(e) => updateField('sodium_mg', e.target.value)}
-            />
-            <Input
-              label="Serving size (g)"
-              name="label-serving-size"
-              type="number"
-              placeholder="e.g. 240"
-              value={fields.serving_size_g || ''}
-              onChange={(e) => updateField('serving_size_g', e.target.value)}
-            />
-          </div>
-          {microCount > 0 && (
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)', color: 'var(--muted)' }}>
-              + {microCount} other nutrient{microCount === 1 ? '' : 's'} detected
-            </div>
-          )}
+          <NutrientFieldsGrid fields={fields} onChange={updateField} namePrefix="label" />
 
           {fields.serving_size_g > 0 && (
             <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', overflow: 'hidden', width: 'fit-content' }}>

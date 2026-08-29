@@ -1,12 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
-
-const MICRO_KEY_HINT =
-  'Use these exact keys where the label lists them (per 100g): vitamin_a_mcg, vitamin_c_mg, vitamin_d_mcg, ' +
-  'vitamin_e_mg, vitamin_k_mcg, vitamin_b1_mg, vitamin_b2_mg, vitamin_b3_mg, vitamin_b5_mg, vitamin_b6_mg, ' +
-  'vitamin_b12_mcg, folate_mcg, calcium_mg, iron_mg, magnesium_mg, phosphorus_mg, potassium_mg, zinc_mg, ' +
-  'copper_mg, manganese_mg, selenium_mcg, saturated_g, monounsaturated_g, polyunsaturated_g, trans_fat_g, ' +
-  'cholesterol_mg, omega3_g, omega6_g, alcohol_g, caffeine_mg, water_g, starch_g, ' +
-  'insoluble_fiber_g, soluble_fiber_g. Only include keys actually printed on the label.'
+import { MICRO_KEY_HINT, requireUser, callAnthropicTool } from './_lib/nutritionShared.js'
 
 const FOOD_TOOL = {
   name: 'extract_nutrition',
@@ -26,7 +18,7 @@ const FOOD_TOOL = {
       serving_label: { type: 'string', description: 'The serving size exactly as printed, e.g. "1 cup", "2 tbsp", "1 slice (28g)"' },
       micronutrients: {
         type: 'object',
-        description: 'Any other listed nutrients per 100g as key/value pairs. ' + MICRO_KEY_HINT,
+        description: 'Any other listed nutrients per 100g as key/value pairs. ' + MICRO_KEY_HINT + ' Only include keys actually printed on the label.',
         additionalProperties: { type: 'number' },
       },
     },
@@ -47,7 +39,7 @@ const SUPPLEMENT_TOOL = {
         description:
           'Nutrients per serving as key/value pairs, e.g. {"vitamin_d_mcg": 25, "zinc_mg": 15}. ' +
           'Map label names to these keys regardless of exact wording (e.g. "Vitamin D3" or "Cholecalciferol" -> vitamin_d_mcg, "Cobalamin"/"Methylcobalamin" -> vitamin_b12_mcg). ' +
-          MICRO_KEY_HINT,
+          MICRO_KEY_HINT + ' Only include keys actually printed on the label.',
         additionalProperties: { type: 'number' },
       },
     },
@@ -61,24 +53,8 @@ export default async function handler(req, res) {
     return
   }
 
-  const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '')
-  if (!token) {
-    res.status(401).json({ error: 'Not authenticated' })
-    return
-  }
-  // Reuses the same Supabase project vars already configured for the client
-  // build (VITE_-prefixed vars are still plain process.env entries at
-  // runtime in a Vercel serverless function — the prefix only controls
-  // what Vite inlines into the browser bundle).
-  const supabaseServer = createClient(process.env.VITE_SUPABASE_URL, process.env.VITE_SUPABASE_ANON_KEY)
-  const {
-    data: { user },
-    error: authError,
-  } = await supabaseServer.auth.getUser(token)
-  if (authError || !user) {
-    res.status(401).json({ error: 'Not authenticated' })
-    return
-  }
+  const user = await requireUser(req, res)
+  if (!user) return
 
   const { imageBase64, mediaType, kind } = req.body || {}
   if (!imageBase64 || !mediaType || !['food', 'supplement'].includes(kind)) {
@@ -99,44 +75,16 @@ export default async function handler(req, res) {
       : "Read the supplement facts label in this photo. Report nutrient amounts per the label's stated serving/dose — do not normalize to 100g. Call extract_nutrition with the result."
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-5',
-        max_tokens: 1024,
-        tools: [tool],
-        tool_choice: { type: 'tool', name: 'extract_nutrition' },
-        messages: [
-          {
-            role: 'user',
-            content: [
-              { type: 'image', source: { type: 'base64', media_type: mediaType, data: imageBase64 } },
-              { type: 'text', text: instruction },
-            ],
-          },
-        ],
-      }),
+    const result = await callAnthropicTool({
+      apiKey,
+      tool,
+      content: [
+        { type: 'image', source: { type: 'base64', media_type: mediaType, data: imageBase64 } },
+        { type: 'text', text: instruction },
+      ],
     })
-
-    if (!response.ok) {
-      const text = await response.text()
-      res.status(502).json({ error: `Anthropic API error: ${response.status} ${text}` })
-      return
-    }
-
-    const data = await response.json()
-    const toolUse = data.content?.find((b) => b.type === 'tool_use')
-    if (!toolUse) {
-      res.status(502).json({ error: 'No structured result returned' })
-      return
-    }
-    res.status(200).json(toolUse.input)
+    res.status(200).json(result)
   } catch (err) {
-    res.status(500).json({ error: String(err) })
+    res.status(502).json({ error: String(err.message || err) })
   }
 }

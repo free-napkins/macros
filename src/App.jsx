@@ -9,7 +9,7 @@ import AdaptiveGoalBanner from './components/AdaptiveGoalBanner.jsx'
 import TodayTotals from './components/TodayTotals.jsx'
 import LogWeight from './components/LogWeight.jsx'
 import QuickAdd from './components/QuickAdd.jsx'
-import QuickAddRecipe from './components/QuickAddRecipe.jsx'
+import Recipes from './components/Recipes.jsx'
 import SupplementChecklist from './components/SupplementChecklist.jsx'
 import HistoryCalendar from './components/HistoryCalendar.jsx'
 import Reveal from './components/Reveal.jsx'
@@ -65,7 +65,7 @@ export default function App() {
           <Reveal><TodayTotals refreshKey={refreshKey} /></Reveal>
           <Reveal><LogWeight onLogged={logged} /></Reveal>
           <Reveal><QuickAdd onLogged={logged} /></Reveal>
-          <Reveal><QuickAddRecipe onLogged={logged} /></Reveal>
+          <Reveal><Recipes onLogged={logged} /></Reveal>
           <Reveal><SupplementChecklist /></Reveal>
         </>
       )}

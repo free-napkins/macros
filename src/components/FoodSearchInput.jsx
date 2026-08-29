@@ -41,6 +41,7 @@ export default function FoodSearchInput({ name, placeholder = 'Search foods…',
       const { data, error } = await supabase
         .from('foods')
         .select('*')
+        .eq('is_permanent', true)
         .or(`name.ilike.%${q}%,product_name.ilike.%${q}%`)
         .limit(20)
       if (cancelled) return
