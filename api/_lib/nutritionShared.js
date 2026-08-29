@@ -66,3 +66,35 @@ export async function callAnthropicTool({ apiKey, tool, content }) {
   }
   return toolUse.input
 }
+
+// Multi-turn variant for agentic flows where the model decides, per
+// turn, whether to reply in plain text (e.g. a clarifying question) or
+// call a tool. Returns the raw content block array — callers inspect
+// it for a tool_use block vs. plain text themselves, since either is
+// a valid outcome here (unlike callAnthropicTool, which requires one).
+export async function callAnthropicChat({ apiKey, system, tools, messages }) {
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-5',
+      max_tokens: 1024,
+      system,
+      tools,
+      tool_choice: { type: 'auto' },
+      messages,
+    }),
+  })
+
+  if (!response.ok) {
+    const text = await response.text()
+    throw new Error(`Anthropic API error: ${response.status} ${text}`)
+  }
+
+  const data = await response.json()
+  return data.content || []
+}

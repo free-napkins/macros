@@ -1,6 +1,6 @@
 import { supabase } from './supabaseClient'
 
-export async function analyzeFood(description) {
+export async function analyzeFood(messages) {
   const {
     data: { session },
   } = await supabase.auth.getSession()
@@ -10,7 +10,7 @@ export async function analyzeFood(description) {
       'content-type': 'application/json',
       ...(session ? { authorization: `Bearer ${session.access_token}` } : {}),
     },
-    body: JSON.stringify({ description }),
+    body: JSON.stringify({ messages }),
   })
   const data = await res.json()
   if (!res.ok) throw new Error(data.error || 'Failed to analyze food')

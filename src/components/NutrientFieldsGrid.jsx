@@ -85,6 +85,13 @@ export default function NutrientFieldsGrid({ fields, onChange, namePrefix }) {
           value={fields.serving_size_g || ''}
           onChange={(e) => onChange('serving_size_g', e.target.value)}
         />
+        <Input
+          label="Serving label (optional)"
+          name={`${namePrefix}-serving-label`}
+          placeholder='e.g. "1 scoop"'
+          value={fields.serving_label || ''}
+          onChange={(e) => onChange('serving_label', e.target.value)}
+        />
       </div>
       {microCount > 0 && (
         <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)', color: 'var(--muted)' }}>
