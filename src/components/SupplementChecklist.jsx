@@ -353,20 +353,16 @@ export default function SupplementChecklist() {
 
         {showAddForm && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-            <label
-              className="dk-btn dk-btn--ghost"
-              style={{ display: 'inline-flex', cursor: 'pointer', width: 'fit-content' }}
-            >
-              {parsing ? 'Reading label…' : 'Scan label instead'}
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={handleScan}
-                disabled={parsing}
-                style={{ display: 'none' }}
-              />
-            </label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
+              <label className="dk-btn dk-btn--ghost" style={{ display: 'inline-flex', cursor: 'pointer', width: 'fit-content' }}>
+                {parsing ? 'Reading label…' : 'Take photo'}
+                <input type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={handleScan} disabled={parsing} style={{ display: 'none' }} />
+              </label>
+              <label className="dk-btn dk-btn--ghost" style={{ display: 'inline-flex', cursor: 'pointer', width: 'fit-content' }}>
+                Choose from library
+                <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleScan} disabled={parsing} style={{ display: 'none' }} />
+              </label>
+            </div>
             <Input label="Name" name="supplement-name" value={newForm.name} onChange={(e) => setNewForm((f) => ({ ...f, name: e.target.value }))} />
             <Input
               label="Dose (optional)"

@@ -387,17 +387,16 @@ function ScanMode({ session, onLogged }) {
   return (
     <>
       {!fields && (
-        <label className="dk-btn dk-btn--ghost" style={{ display: 'inline-flex', cursor: 'pointer', width: 'fit-content' }}>
-          {parsing ? 'Reading label…' : 'Take or choose photo'}
-          <input
-            type="file"
-            accept="image/*"
-            capture="environment"
-            onChange={handleFile}
-            disabled={parsing}
-            style={{ display: 'none' }}
-          />
-        </label>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
+          <label className="dk-btn dk-btn--ghost" style={{ display: 'inline-flex', cursor: 'pointer', width: 'fit-content' }}>
+            {parsing ? 'Reading label…' : 'Take photo'}
+            <input type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={handleFile} disabled={parsing} style={{ display: 'none' }} />
+          </label>
+          <label className="dk-btn dk-btn--ghost" style={{ display: 'inline-flex', cursor: 'pointer', width: 'fit-content' }}>
+            Choose from library
+            <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFile} disabled={parsing} style={{ display: 'none' }} />
+          </label>
+        </div>
       )}
 
       {fields && (
