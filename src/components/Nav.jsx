@@ -6,6 +6,7 @@ export default function Nav({ page, onChange }) {
   const tabs = [
     { key: 'today', label: 'Today' },
     { key: 'history', label: 'History' },
+    { key: 'design', label: 'Design Lab' },
   ]
   const session = useSession()
   const { unitSystem, setUnitSystem } = useUnitSystem()

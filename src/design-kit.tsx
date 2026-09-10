@@ -97,8 +97,10 @@ const CSS = `
 .dk-shell{position:relative;min-height:100vh;background:var(--bg);color:var(--fg);padding:var(--space-10) var(--space-6) var(--space-16);overflow:hidden}
 .dk-shell::before{content:'';position:absolute;inset:-10% -5%;z-index:0;pointer-events:none;background:radial-gradient(ellipse 50% 35% at 70% 20%,rgba(60,255,158,.06),transparent 65%),radial-gradient(ellipse 40% 30% at 20% 80%,rgba(60,255,158,.04),transparent 70%);animation:dk-drift 60s ease-in-out infinite alternate}
 .dk-shell__inner{position:relative;z-index:1;max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:var(--space-10)}
+.dk-today-sidecar{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-4);align-items:start}
+@media(max-width:640px){.dk-today-sidecar{grid-template-columns:1fr}}
 @keyframes dk-drift{from{transform:translate3d(0,0,0)}to{transform:translate3d(-2%,1%,0)}}
-.dk-grid{display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(3,minmax(180px,auto));gap:var(--space-4)}
+.dk-grid{display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(3,minmax(180px,auto));gap:var(--tile-gap,var(--space-4))}
 @media(max-width:980px){.dk-grid{grid-template-columns:repeat(2,1fr);grid-template-rows:none;grid-auto-rows:minmax(160px,auto)}}
 @media(max-width:560px){.dk-grid{grid-template-columns:1fr;grid-auto-rows:minmax(140px,auto);gap:var(--space-3)}}
 .dk-poster{position:relative;overflow:hidden;border-radius:18px;border:1px solid var(--border);background:var(--card);cursor:pointer;isolation:isolate;display:block;width:100%;text-align:left;color:inherit;font:inherit;opacity:0;transform:translateY(12px) scale(.97);animation:dk-posterIn 800ms var(--ease-premium) forwards;transition:transform var(--duration-lift) var(--ease-premium),border-color var(--duration) var(--ease),box-shadow 260ms var(--ease-premium);will-change:transform;backdrop-filter:blur(var(--backdrop-blur));-webkit-backdrop-filter:blur(var(--backdrop-blur))}
@@ -129,7 +131,17 @@ const CSS = `
 @keyframes dk-dotsRotate{from{transform:rotate(0)}to{transform:rotate(360deg)}}
 .dk-art--duotone{background:radial-gradient(ellipse 80% 60% at 30% 30%,rgba(245,158,11,.35),transparent 65%),linear-gradient(135deg,var(--amber-warm),var(--wine) 65%,#1a0808);animation:dk-duotoneShift 22s ease-in-out infinite alternate}
 @keyframes dk-duotoneShift{0%{filter:saturate(.95) hue-rotate(0)}100%{filter:saturate(1.05) hue-rotate(-6deg)}}
-.dk-art--frosted{background:radial-gradient(ellipse 60% 50% at 30% 30%,rgba(192,133,82,.5),transparent 65%),radial-gradient(ellipse 70% 60% at 75% 70%,rgba(67,56,202,.45),transparent 65%),linear-gradient(180deg,#0a0a1e,#02020a);filter:saturate(1.2)}
+.dk-art--frosted{background:radial-gradient(ellipse 60% 50% at 30% 30%,rgba(255,112,166,.52),transparent 65%),radial-gradient(ellipse 70% 60% at 75% 70%,rgba(67,56,202,.45),transparent 65%),linear-gradient(180deg,#10142f,#02020a);filter:saturate(1.2)}
+.dk-grid[data-palette="citrus"] .dk-art--aurora{background:radial-gradient(ellipse 65% 50% at 30% 35%,rgba(255,214,77,.7),transparent 60%),radial-gradient(ellipse 70% 55% at 75% 70%,rgba(255,91,91,.75),transparent 65%),linear-gradient(180deg,#352006,#090b12)}
+.dk-grid[data-palette="citrus"] .dk-art--grid{background:repeating-linear-gradient(45deg,transparent 0 22px,rgba(255,214,77,.1) 22px 23px),linear-gradient(135deg,#26150b,#09141d)}
+.dk-grid[data-palette="citrus"] .dk-art--dots{background:radial-gradient(circle,rgba(86,224,176,.65) 1px,transparent 1.5px),linear-gradient(180deg,#142d2b,#100b18);background-size:16px 16px,100% 100%}
+.dk-grid[data-palette="citrus"] .dk-art--duotone{background:linear-gradient(135deg,#ff5b5b,#ffcf4a 55%,#3dd6c6)}
+.dk-grid[data-palette="citrus"] .dk-art--frosted{background:linear-gradient(135deg,#ff7aa2,#695cff 55%,#3dd6c6)}
+.dk-grid[data-palette="violet"] .dk-art--aurora{background:radial-gradient(ellipse 65% 50% at 30% 35%,rgba(255,120,196,.7),transparent 60%),radial-gradient(ellipse 70% 55% at 75% 70%,rgba(81,71,255,.8),transparent 65%),linear-gradient(180deg,#26134d,#090b12)}
+.dk-grid[data-palette="violet"] .dk-art--grid{background:repeating-linear-gradient(45deg,transparent 0 22px,rgba(255,120,196,.1) 22px 23px),linear-gradient(135deg,#1f1238,#111e3d)}
+.dk-grid[data-palette="violet"] .dk-art--dots{background:radial-gradient(circle,rgba(120,220,255,.65) 1px,transparent 1.5px),linear-gradient(180deg,#1f1748,#100b18);background-size:16px 16px,100% 100%}
+.dk-grid[data-palette="violet"] .dk-art--duotone{background:linear-gradient(135deg,#ff70c8,#805cff 55%,#55d6ff)}
+.dk-grid[data-palette="violet"] .dk-art--frosted{background:linear-gradient(135deg,#ff8bd9,#6a61ff 55%,#53dbff)}
 .dk-art--frosted::after{content:'';position:absolute;width:70%;height:70%;top:15%;left:15%;border-radius:50%;background:rgba(255,255,255,.04);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,.06);animation:dk-frostedBob 16s ease-in-out infinite alternate}
 @keyframes dk-frostedBob{0%{transform:translate(0,0) scale(1)}100%{transform:translate(4%,-3%) scale(1.04)}}
 .dk-reveal{opacity:0;transform:translateY(22px);transition:opacity 600ms var(--ease-premium),transform 600ms var(--ease-premium)}
@@ -295,10 +307,10 @@ export function PageShell({ maxWidth = 1180, className = '', children, ...rest }
 export type PosterArt = 'aurora' | 'grid' | 'dots' | 'duotone' | 'frosted'
 export type PosterSlot = 'hero' | 'wideTop' | 'tall' | 'square' | 'wideBot'
 export interface PosterConfig { art: PosterArt; slot: PosterSlot; label?: string; id?: string; active?: boolean }
-export interface PosterGridProps { posters: PosterConfig[]; onSelect?: (id: string, index: number) => void }
+export interface PosterGridProps { posters: PosterConfig[]; onSelect?: (id: string, index: number) => void; gap?: number; palette?: string }
 const ART: Record<PosterArt, string> = { aurora: 'dk-art--aurora', grid: 'dk-art--grid', dots: 'dk-art--dots', duotone: 'dk-art--duotone', frosted: 'dk-art--frosted' }
 const SLOT: Record<PosterSlot, string> = { hero: 'dk-poster--hero', wideTop: 'dk-poster--wideTop', tall: 'dk-poster--tall', square: 'dk-poster--square', wideBot: 'dk-poster--wideBot' }
-export function PosterGrid({ posters, onSelect }: PosterGridProps) {
+export function PosterGrid({ posters, onSelect, gap = 16, palette = 'neon' }: PosterGridProps) {
   const artRefs = useRef<Array<HTMLDivElement | null>>([])
   const onMove = (i: number) => (e: React.PointerEvent<HTMLElement>) => {
     const el = e.currentTarget, art = artRefs.current[i]
@@ -310,7 +322,7 @@ export function PosterGrid({ posters, onSelect }: PosterGridProps) {
   }
   const onLeave = (i: number) => () => { const a = artRefs.current[i]; if (a) a.style.transform = 'translate3d(0,0,0)' }
   return (
-    <div className="dk-grid">
+    <div className="dk-grid" data-palette={palette} style={{ '--tile-gap': `${gap}px` } as React.CSSProperties}>
       {posters.map((p, i) => (
         <button key={i} type="button"
           className={['dk-poster', SLOT[p.slot], p.active ? 'dk-poster--active' : ''].filter(Boolean).join(' ')}

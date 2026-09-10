@@ -14,7 +14,7 @@ function newRow() {
 }
 
 function emptyBatchInfo() {
-  return { name: '', dateMade: todayDate(), totalServings: '' }
+  return { name: '', dateMade: todayDate(), totalServings: '', remainingServings: '' }
 }
 
 export default function MealPrepMode({ session, onLogged }) {
@@ -26,6 +26,7 @@ export default function MealPrepMode({ session, onLogged }) {
   const [info, setInfo] = useState(emptyBatchInfo)
   const [rows, setRows] = useState([newRow()])
   const [saving, setSaving] = useState(false)
+  const [editingBatch, setEditingBatch] = useState(null)
 
   async function load() {
     if (!session) return
@@ -38,7 +39,21 @@ export default function MealPrepMode({ session, onLogged }) {
       setError(error.message)
       return
     }
-    setBatches(data)
+    const { data: ingredientRows, error: ingredientError } = data.length === 0
+      ? { data: [], error: null }
+      : await supabase
+        .from('meal_prep_ingredients')
+        .select('meal_prep_id, grams, foods(*)')
+        .in('meal_prep_id', data.map((batch) => batch.id))
+    if (ingredientError && ingredientError.code !== '42P01') {
+      setError(ingredientError.message)
+      return
+    }
+    const ingredientsByBatch = (ingredientRows || []).reduce((grouped, row) => {
+      grouped[row.meal_prep_id] = [...(grouped[row.meal_prep_id] || []), row]
+      return grouped
+    }, {})
+    setBatches(data.map((batch) => ({ ...batch, ingredients: ingredientsByBatch[batch.id] || [] })))
   }
 
   useEffect(() => {
@@ -50,6 +65,22 @@ export default function MealPrepMode({ session, onLogged }) {
     setInfo(emptyBatchInfo())
     setRows([newRow()])
     setShowForm(false)
+    setEditingBatch(null)
+  }
+
+  function editBatch(batch) {
+    setEditingBatch(batch.id)
+    setShowForm(true)
+    setInfo({
+      name: batch.name,
+      dateMade: batch.date_made,
+      totalServings: String(batch.total_servings),
+      remainingServings: String(batch.remaining_servings),
+    })
+    setRows(batch.ingredients.length > 0
+      ? batch.ingredients.map((ingredient) => ({ key: rowKey++, food: ingredient.foods, grams: String(ingredient.grams) }))
+      : [newRow()])
+    setError(null)
   }
 
   function updateRow(key, patch) {
@@ -98,7 +129,7 @@ export default function MealPrepMode({ session, onLogged }) {
       return
     }
 
-    const { error: batchError } = await supabase.from('meal_preps').insert({
+    const { data: batchRows, error: batchError } = await supabase.from('meal_preps').insert({
       user_id: session.user.id,
       food_id: foodRows[0].id,
       name: info.name.trim(),
@@ -106,7 +137,68 @@ export default function MealPrepMode({ session, onLogged }) {
       serving_grams: totalGrams / portions,
       total_servings: portions,
       remaining_servings: portions,
-    })
+    }).select('id')
+    setSaving(false)
+    if (batchError) {
+      setError(batchError.message)
+      return
+    }
+    const batchId = batchRows?.[0]?.id
+    if (batchId) {
+      await supabase.from('meal_prep_ingredients').insert(
+        validRows.map((row) => ({ meal_prep_id: batchId, food_id: row.food.id, grams: parseFloat(row.grams) }))
+      )
+    }
+    resetForm()
+    load()
+  }
+
+  async function updateBatch() {
+    const batch = batches.find((item) => item.id === editingBatch)
+    if (!batch) return
+    const totalServings = parseFloat(info.totalServings)
+    const remainingServings = parseFloat(info.remainingServings)
+    if (!info.name.trim() || !totalServings || remainingServings < 0 || remainingServings > totalServings) return
+    setSaving(true)
+    setError(null)
+
+    const update = {
+      name: info.name.trim(),
+      date_made: info.dateMade,
+      total_servings: totalServings,
+      remaining_servings: remainingServings,
+    }
+    if (validRows.length > 0) {
+      const totalGrams = validRows.reduce((sum, row) => sum + parseFloat(row.grams), 0)
+      const totals = recipeTotals({ recipe_ingredients: validRows.map((row) => ({ foods: row.food, grams: parseFloat(row.grams) })) })
+      const scale = 100 / totalGrams
+      const { error: foodError } = await supabase.from('foods').update({
+        name: info.name.trim(),
+        calories: totals.calories * scale,
+        protein_g: totals.protein_g * scale,
+        carbs_g: totals.carbs_g * scale,
+        fat_g: totals.fat_g * scale,
+        fiber_g: totals.fiber_g * scale,
+        sugar_g: totals.sugar_g * scale,
+        sodium_mg: totals.sodium_mg * scale,
+      }).eq('id', batch.food_id)
+      if (foodError) {
+        setSaving(false)
+        setError(foodError.message)
+        return
+      }
+      update.serving_grams = totalGrams / totalServings
+      await supabase.from('meal_prep_ingredients').delete().eq('meal_prep_id', batch.id)
+      const { error: ingredientsError } = await supabase.from('meal_prep_ingredients').insert(
+        validRows.map((row) => ({ meal_prep_id: batch.id, food_id: row.food.id, grams: parseFloat(row.grams) }))
+      )
+      if (ingredientsError) {
+        setSaving(false)
+        setError(ingredientsError.message)
+        return
+      }
+    }
+    const { error: batchError } = await supabase.from('meal_preps').update(update).eq('id', batch.id)
     setSaving(false)
     if (batchError) {
       setError(batchError.message)
@@ -184,13 +276,16 @@ export default function MealPrepMode({ session, onLogged }) {
                   type="number"
                   min="0"
                   step="0.5"
-                  placeholder="1"
-                  value={amounts[batch.id] ?? '1'}
+                  placeholder="Servings"
+                  value={amounts[batch.id] ?? ''}
                   onChange={(e) => setAmounts((a) => ({ ...a, [batch.id]: e.target.value }))}
                 />
               </div>
               <Button onClick={() => logServings(batch)} disabled={logging === batch.id}>
                 Log
+              </Button>
+              <Button variant="ghost" onClick={() => editBatch(batch)} disabled={logging === batch.id}>
+                Edit
               </Button>
             </div>
           ))}
@@ -214,13 +309,24 @@ export default function MealPrepMode({ session, onLogged }) {
               onChange={(e) => setInfo((f) => ({ ...f, name: e.target.value }))}
             />
             <Input
-              label="Number of portions"
+              label="Total portions"
               name="mealprep-total-servings"
               type="number"
               min="0"
               value={info.totalServings}
               onChange={(e) => setInfo((f) => ({ ...f, totalServings: e.target.value }))}
             />
+            {editingBatch && (
+              <Input
+                label="Servings left"
+                name="mealprep-remaining-servings"
+                type="number"
+                min="0"
+                step="0.5"
+                value={info.remainingServings}
+                onChange={(e) => setInfo((f) => ({ ...f, remainingServings: e.target.value }))}
+              />
+            )}
             <Input
               label="Date made"
               name="mealprep-date"
@@ -276,8 +382,8 @@ export default function MealPrepMode({ session, onLogged }) {
             </div>
           )}
 
-          <Button onClick={createBatch} disabled={saving || !canCreate}>
-            Save batch
+          <Button onClick={editingBatch ? updateBatch : createBatch} disabled={saving || (editingBatch ? !info.name.trim() : !canCreate)}>
+            {editingBatch ? 'Save changes' : 'Save batch'}
           </Button>
         </>
       )}

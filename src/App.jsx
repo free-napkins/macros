@@ -8,12 +8,14 @@ import Nav from './components/Nav.jsx'
 import AdaptiveGoalBanner from './components/AdaptiveGoalBanner.jsx'
 import TodayTotals from './components/TodayTotals.jsx'
 import LogWeight from './components/LogWeight.jsx'
+import TodayEaten from './components/TodayEaten.jsx'
 import QuickAdd from './components/QuickAdd.jsx'
 import Recipes from './components/Recipes.jsx'
 import SupplementChecklist from './components/SupplementChecklist.jsx'
 import HistoryCalendar from './components/HistoryCalendar.jsx'
 import Reveal from './components/Reveal.jsx'
 import { UnitProvider } from './lib/UnitContext.jsx'
+import DesignLab from './components/DesignLab.jsx'
 
 export default function App() {
   const session = useSession()
@@ -63,7 +65,10 @@ export default function App() {
         <>
           <AdaptiveGoalBanner onAdjusted={logged} />
           <Reveal><TodayTotals refreshKey={refreshKey} /></Reveal>
-          <Reveal><LogWeight onLogged={logged} /></Reveal>
+          <div className="dk-today-sidecar">
+            <Reveal><LogWeight onLogged={logged} /></Reveal>
+            <Reveal><TodayEaten refreshKey={refreshKey} /></Reveal>
+          </div>
           <Reveal><QuickAdd onLogged={logged} /></Reveal>
           <Reveal><Recipes onLogged={logged} /></Reveal>
           <Reveal><SupplementChecklist /></Reveal>
@@ -71,6 +76,7 @@ export default function App() {
       )}
 
       {page === 'history' && <Reveal><HistoryCalendar /></Reveal>}
+      {page === 'design' && <Reveal><DesignLab /></Reveal>}
       </UnitProvider>
     </PageShell>
   )
