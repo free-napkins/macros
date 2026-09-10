@@ -41,6 +41,7 @@ const CSS = `
   --ease:cubic-bezier(.2,.8,.2,1);--ease-premium:cubic-bezier(.16,1,.3,1);--ease-out-soft:cubic-bezier(.32,.72,0,1);
   --duration-fast:120ms;--duration:180ms;--duration-lift:480ms;
 }
+*,*::before,*::after{box-sizing:border-box}
 .dk-btn{display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2);padding:.6875rem var(--space-4);border:1px solid transparent;border-radius:var(--radius-md);font-family:var(--font-sans);font-size:var(--text-sm);font-weight:600;line-height:1;white-space:nowrap;cursor:pointer;transition:background var(--duration) var(--ease),border-color var(--duration) var(--ease),color var(--duration) var(--ease),transform var(--duration-fast) var(--ease)}
 .dk-btn:disabled{opacity:.5;cursor:not-allowed}
 .dk-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -63,7 +64,7 @@ const CSS = `
 .dk-card__header{margin-bottom:var(--space-4)}
 .dk-card__title{font-family:var(--font-serif);font-style:normal;font-weight:600;font-size:var(--text-xl);letter-spacing:-.015em}
 .dk-card__eyebrow{font-family:var(--font-mono);font-size:var(--text-xs);letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:var(--space-2)}
-.dk-field{display:flex;flex-direction:column;gap:var(--space-2)}
+.dk-field{display:flex;flex-direction:column;gap:var(--space-2);min-width:0}
 .dk-field__label{font-family:var(--font-sans);font-size:var(--text-xs);font-weight:500;color:var(--muted-strong);letter-spacing:.02em;text-transform:uppercase}
 .dk-input,.dk-textarea{background:var(--card);border:1px solid var(--border);color:var(--fg);font-family:var(--font-sans);font-size:var(--text-sm);padding:.6875rem var(--space-3);border-radius:var(--radius-sm);outline:none;width:100%;transition:border-color var(--duration) var(--ease),background var(--duration) var(--ease)}
 .dk-textarea{resize:vertical;min-height:88px;line-height:1.5}

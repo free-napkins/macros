@@ -208,6 +208,22 @@ export default function MealPrepMode({ session, onLogged }) {
     load()
   }
 
+  async function deleteBatch() {
+    const batch = batches.find((item) => item.id === editingBatch)
+    if (!batch || !window.confirm(`Delete ${batch.name}? Existing food logs will be kept.`)) return
+    setSaving(true)
+    setError(null)
+    const { error: deleteError } = await supabase.from('meal_preps').delete().eq('id', batch.id)
+    setSaving(false)
+    if (deleteError) {
+      setError(deleteError.message)
+      return
+    }
+    resetForm()
+    onLogged?.()
+    load()
+  }
+
   async function logServings(batch) {
     const amount = parseFloat(amounts[batch.id])
     if (!amount || amount <= 0) return
@@ -300,7 +316,7 @@ export default function MealPrepMode({ session, onLogged }) {
 
       {showForm && (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 'var(--space-3)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', gap: 'var(--space-3)', minWidth: 0 }}>
             <Input
               label="Batch name"
               name="mealprep-name"
@@ -338,15 +354,15 @@ export default function MealPrepMode({ session, onLogged }) {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
             {rows.map((row) => (
-              <div key={row.key} style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)', alignItems: 'flex-start' }}>
-                <div style={{ flex: '2 1 200px' }}>
+              <div key={row.key} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(100px, 1fr) auto', gap: 'var(--space-2)', alignItems: 'start', minWidth: 0 }}>
+                <div style={{ minWidth: 0 }}>
                   <FoodSearchInput
                     name={`mealprep-food-${row.key}`}
                     placeholder="Ingredient in this batch"
                     onSelect={(food) => updateRow(row.key, { food })}
                   />
                 </div>
-                <div style={{ flex: '1 1 100px' }}>
+                <div style={{ minWidth: 0 }}>
                   <Input
                     name={`mealprep-grams-${row.key}`}
                     type="number"
@@ -382,9 +398,16 @@ export default function MealPrepMode({ session, onLogged }) {
             </div>
           )}
 
-          <Button onClick={editingBatch ? updateBatch : createBatch} disabled={saving || (editingBatch ? !info.name.trim() : !canCreate)}>
-            {editingBatch ? 'Save changes' : 'Save batch'}
-          </Button>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
+            <Button onClick={editingBatch ? updateBatch : createBatch} disabled={saving || (editingBatch ? !info.name.trim() : !canCreate)}>
+              {editingBatch ? 'Save changes' : 'Save batch'}
+            </Button>
+            {editingBatch && (
+              <Button variant="ghost" onClick={deleteBatch} disabled={saving}>
+                Delete meal plan
+              </Button>
+            )}
+          </div>
         </>
       )}
 
