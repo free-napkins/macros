@@ -56,14 +56,23 @@ export default function Nav({ page, onChange }) {
         </div>
 
         {session && (
-          <button
-            type="button"
-            onClick={() => supabase.auth.signOut()}
-            className="dk-btn dk-btn--link"
-            title={session.user.email}
-          >
-            Sign out
-          </button>
+          <>
+            <a href={window.BoxAuth.accountUrl} className="dk-btn dk-btn--link" title={session.user.email}>
+              Account
+            </a>
+            <button
+              type="button"
+              onClick={async () => {
+                // Signs out of every boxofjelly.xyz app on this device (shared session).
+                window.__boxSigningOut = true
+                await supabase.auth.signOut({ scope: 'local' })
+                window.location.replace(window.BoxAuth.accountsOrigin + '/')
+              }}
+              className="dk-btn dk-btn--link"
+            >
+              Sign out
+            </button>
+          </>
         )}
       </div>
     </nav>

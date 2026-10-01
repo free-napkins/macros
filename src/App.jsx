@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { supabase } from './lib/supabaseClient'
 import { useSession } from './lib/SessionContext.jsx'
 import { PageShell } from './design-kit.tsx'
-import Auth from './components/Auth.jsx'
 import Onboarding from './components/Onboarding.jsx'
 import Nav from './components/Nav.jsx'
 import AdaptiveGoalBanner from './components/AdaptiveGoalBanner.jsx'
@@ -39,7 +38,16 @@ export default function App() {
   }
 
   if (session === null) {
-    return <PageShell><Auth /></PageShell>
+    // On boxofjelly.xyz the browser is already redirecting to the sign-in page.
+    return (
+      <PageShell>
+        <p style={{ color: 'var(--muted)', textAlign: 'center', marginTop: 'var(--space-6)' }}>
+          {window.BoxAuth.canSignIn
+            ? 'Taking you to sign in…'
+            : 'Sign-in works on macros.boxofjelly.xyz. Open the app there to use your account.'}
+        </p>
+      </PageShell>
+    )
   }
 
   if (hasProfile === null) {

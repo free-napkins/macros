@@ -10,8 +10,8 @@ export const MICRO_KEY_HINT =
   'For anything not in this list (proprietary blends, herbal extracts, amino acids, etc.), invent a short ' +
   'descriptive snake_case key instead of dropping it, e.g. ashwagandha_mg, milk_thistle_extract_mg.'
 
-// Verifies the caller holds a valid Supabase session before any route
-// spends the shared ANTHROPIC_API_KEY. Writes a 401 and returns null
+// Verifies the caller holds a valid, 2FA-verified Supabase session before
+// any route spends the shared ANTHROPIC_API_KEY. Writes a 401 and returns null
 // on failure — callers should `if (!user) return` immediately after.
 export async function requireUser(req, res) {
   const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '')
@@ -30,6 +30,14 @@ export async function requireUser(req, res) {
   } = await supabaseServer.auth.getUser(token)
   if (error || !user) {
     res.status(401).json({ error: 'Not authenticated' })
+    return null
+  }
+  // The token was just validated by Supabase, so its claims can be trusted:
+  // require the 2FA-verified level (password + authenticator app).
+  let claims = {}
+  try { claims = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString('utf8')) } catch (_) {}
+  if (claims.aal !== 'aal2') {
+    res.status(401).json({ error: 'Finish signing in with your authenticator app first' })
     return null
   }
   return user
